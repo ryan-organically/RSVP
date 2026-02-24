@@ -1,0 +1,6 @@
+*.pdf
+node_modules
+claude-digest
+.claude
+rsvp-reader (2).html
+test-*.html

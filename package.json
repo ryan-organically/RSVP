@@ -1,0 +1,12 @@
+{
+  "name": "rsvp-reader",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve public -p 3000",
+    "build": "echo 'static site'"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.0"
+  }
+}

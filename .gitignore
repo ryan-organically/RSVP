@@ -1,0 +1,8 @@
+node_modules/
+.vercel/
+*.pdf
+.env
+.env.local
+claude-digest/node_modules/
+.vercel
+.env*.local
