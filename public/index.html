@@ -77,6 +77,16 @@
   .guten-card { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); margin-bottom: 8px; }
   .guten-cover { width: 44px; height: 64px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
 
+  /* Featured books log */
+  .featured-section { margin-bottom: 20px; }
+  .featured-section h3 { font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 0 4px; margin: 0; }
+  .featured-log { border-top: 1px solid var(--border); }
+  .featured-row { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+  .featured-row:hover { background: var(--surface); }
+  .featured-row .fb-title { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .featured-row .fb-author { font-size: 11px; color: var(--dim); white-space: nowrap; }
+  .featured-row .fb-dl { font-size: 10px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; opacity: 0.6; }
+
   .empty-state { text-align: center; padding: 60px 20px; color: var(--dim); }
   .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
 
@@ -122,7 +132,7 @@
   .reader-main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
 
   .word-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px 100px; cursor: pointer; user-select: none; position: relative; overflow: hidden; contain: layout style; }
-  .word-area::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1px; height: 40px; background: var(--accent); opacity: 0.15; pointer-events: none; }
+  .word-area::before { display: none; }
   .word-display { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; letter-spacing: 0.02em; line-height: 1.2; min-height: 1.2em; white-space: nowrap; transform: translateX(var(--orp-offset, 0px)); transition: opacity 0.05s; will-change: transform; contain: layout style; }
   .word-display .orp { color: var(--accent); font-weight: 700; }
   .word-display .orp-before, .word-display .orp-after { display: inline; }
@@ -146,7 +156,10 @@
   .strip-bm { padding: 6px 10px; font-size: 14px; }
   .strip-wpm { display: flex; align-items: center; gap: 6px; }
   .strip-wpm-label { font-size: 11px; color: var(--dim); font-weight: 600; min-width: 28px; }
-  .strip-slider { width: 80px; accent-color: var(--accent); }
+  .strip-slider { width: 80px; accent-color: var(--accent); -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: var(--text); opacity: 0.1; outline: none; }
+  .strip-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+  .strip-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none; }
+  .strip-slider::-moz-range-track { height: 4px; border-radius: 2px; background: var(--text); opacity: 0.1; }
   input[type=range] { accent-color: var(--accent); }
   /* Settings popover */
   .settings-pop { position: absolute; top: 48px; right: 12px; z-index: 25; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; min-width: 220px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--dim); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
@@ -218,13 +231,21 @@
   .digest-time { font-size: 11px; color: var(--dim); }
   .digest-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
   .digest-tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
-  .tag-critical { background: #e8404020; color: #e84040; border: 1px solid #e8404040; }
-  .tag-high { background: #e8840020; color: #e88400; border: 1px solid #e8840040; }
-  .tag-done { background: #40b86020; color: #40b860; border: 1px solid #40b86040; }
-  .tag-info { background: #4088e820; color: #4088e8; border: 1px solid #4088e840; }
-  .tag-decision { background: #a855f720; color: #a855f7; border: 1px solid #a855f740; }
+  .digest-tag.tag-critical { background: #e8404020; color: #e84040; border: 1px solid #e8404040; }
+  .digest-tag.tag-high { background: #e8840020; color: #e88400; border: 1px solid #e8840040; }
+  .digest-tag.tag-done { background: #40b86020; color: #40b860; border: 1px solid #40b86040; }
+  .digest-tag.tag-info { background: #4088e820; color: #4088e8; border: 1px solid #4088e840; }
+  .digest-tag.tag-decision { background: #a855f720; color: #a855f7; border: 1px solid #a855f740; }
+  .digest-export { font-size: 16px; cursor: pointer; opacity: 0.3; transition: opacity 0.15s; line-height: 1; padding: 2px; }
+  .digest-export:hover { opacity: 1; }
   .digest-summary { font-size: 13px; color: var(--dim); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .digest-block-count { font-size: 12px; color: var(--dim); margin-top: 6px; }
+
+  /* Digest paste form */
+  .digest-paste-form { background:none; border:none; padding:0; margin-bottom:12px; }
+  .digest-paste-form textarea { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; resize:vertical; }
+  .digest-paste-form textarea:focus { outline:none; border-color:var(--accent); }
+  .digest-paste-submit { background:var(--accent); color:#fff; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; }
 
   /* Reader color for digest blocks */
   .word-display.tag-critical .orp { color: #e84040; }
@@ -279,18 +300,18 @@
     <!-- Free Library panel -->
     <div id="panelFree" class="hidden">
       <div class="search-row">
-        <input class="search-input" id="gutenSearch" placeholder="Search 60,000+ free books..." onkeydown="if(event.key==='Enter')searchGutenberg()">
+        <input class="search-input" id="gutenSearch" placeholder="Search 60,000+ free books..." onkeydown="if(event.key==='Enter')searchGutenberg()" oninput="if(!this.value.trim()){document.getElementById('gutenResults').innerHTML='';document.getElementById('gutenFeatured').style.display=''}">
         <button class="btn-primary" onclick="searchGutenberg()">Search</button>
       </div>
-      <div id="gutenSuggestions" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:20px"></div>
       <div id="gutenResults"></div>
-      <div id="gutenEmpty" class="empty-state">
-        <div class="empty-icon">🌐</div>
-        <p>Search Project Gutenberg's library of 60,000+ free public domain books.</p>
-      </div>
+      <div id="gutenFeatured"></div>
     </div>
     <!-- Dev Digest panel -->
     <div id="panelDigest" class="hidden">
+      <div class="digest-paste-form open" id="digestPasteForm" style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="digestPasteText" placeholder="Paste dev notes — first line becomes the title, rest become blocks. Tag lines with DONE: HIGH: CRITICAL: INFO: DECIDE:" style="flex:1;min-height:38px;max-height:200px"></textarea>
+        <button class="digest-paste-submit" onclick="submitPastedDigest()" style="white-space:nowrap;height:38px">+ Add</button>
+      </div>
       <div id="digestList"></div>
     </div>
   </div>
@@ -486,7 +507,75 @@ function loadSettings() {
     if (s.accent) S.accent = s.accent;
   } catch {}
 }
-const SUGGESTIONS = ['Pride and Prejudice','Moby Dick','Frankenstein','Art of War','Origin of Species','Sherlock Holmes','Dracula','Republic Plato'];
+const FEATURED_BOOKS = [
+  { cat: 'Essential Classics', books: [
+    { id:84, t:'Frankenstein', a:'Mary Shelley', dl:150546 },
+    { id:768, t:'Wuthering Heights', a:'Emily Bront\u00eb', dl:102455 },
+    { id:1342, t:'Pride and Prejudice', a:'Jane Austen', dl:86747 },
+    { id:2554, t:'Crime and Punishment', a:'Fyodor Dostoyevsky', dl:50199 },
+    { id:1260, t:'Jane Eyre', a:'Charlotte Bront\u00eb', dl:45255 },
+    { id:174, t:'The Picture of Dorian Gray', a:'Oscar Wilde', dl:35817 },
+    { id:28054, t:'The Brothers Karamazov', a:'Fyodor Dostoyevsky', dl:31896 },
+    { id:98, t:'A Tale of Two Cities', a:'Charles Dickens', dl:31646 },
+    { id:1400, t:'Great Expectations', a:'Charles Dickens', dl:24542 },
+    { id:2600, t:'War and Peace', a:'Leo Tolstoy', dl:23619 },
+    { id:4300, t:'Ulysses', a:'James Joyce', dl:23057 },
+    { id:1399, t:'Anna Karenina', a:'Leo Tolstoy', dl:18689 },
+    { id:135, t:'Les Mis\u00e9rables', a:'Victor Hugo', dl:16589 },
+  ]},
+  { cat: 'Adventure & Fantasy', books: [
+    { id:11, t:'Alice in Wonderland', a:'Lewis Carroll', dl:52940 },
+    { id:1184, t:'The Count of Monte Cristo', a:'Alexandre Dumas', dl:36464 },
+    { id:1661, t:'Sherlock Holmes', a:'Arthur Conan Doyle', dl:28773 },
+    { id:120, t:'Treasure Island', a:'Robert Louis Stevenson', dl:21555 },
+    { id:55, t:'The Wonderful Wizard of Oz', a:'L. Frank Baum', dl:18777 },
+    { id:2852, t:'Hound of the Baskervilles', a:'Arthur Conan Doyle', dl:16426 },
+    { id:996, t:'Don Quixote', a:'Miguel de Cervantes', dl:15477 },
+    { id:829, t:'Gulliver\u2019s Travels', a:'Jonathan Swift', dl:14334 },
+    { id:164, t:'20,000 Leagues Under the Sea', a:'Jules Verne', dl:10506 },
+    { id:35, t:'The Time Machine', a:'H. G. Wells', dl:10491 },
+    { id:215, t:'The Call of the Wild', a:'Jack London', dl:9260 },
+    { id:103, t:'Around the World in 80 Days', a:'Jules Verne', dl:7966 },
+  ]},
+  { cat: 'Philosophy & Science', books: [
+    { id:1998, t:'Thus Spoke Zarathustra', a:'Nietzsche', dl:26832 },
+    { id:205, t:'Walden', a:'Henry David Thoreau', dl:26565 },
+    { id:3207, t:'Leviathan', a:'Thomas Hobbes', dl:24927 },
+    { id:1232, t:'The Prince', a:'Machiavelli', dl:24801 },
+    { id:4363, t:'Beyond Good and Evil', a:'Nietzsche', dl:22442 },
+    { id:2680, t:'Meditations', a:'Marcus Aurelius', dl:19220 },
+    { id:1497, t:'The Republic', a:'Plato', dl:18489 },
+    { id:132, t:'The Art of War', a:'Sun Tzu', dl:11911 },
+    { id:3300, t:'The Wealth of Nations', a:'Adam Smith', dl:11876 },
+    { id:8438, t:'Nicomachean Ethics', a:'Aristotle', dl:10924 },
+    { id:1228, t:'On the Origin of Species', a:'Charles Darwin', dl:9430 },
+    { id:61, t:'The Communist Manifesto', a:'Karl Marx', dl:7174 },
+    { id:2130, t:'Utopia', a:'Thomas More', dl:4089 },
+  ]},
+  { cat: 'Horror & Gothic', books: [
+    { id:43, t:'Dr. Jekyll and Mr. Hyde', a:'R. L. Stevenson', dl:55107 },
+    { id:8492, t:'The King in Yellow', a:'Robert W. Chambers', dl:38701 },
+    { id:345, t:'Dracula', a:'Bram Stoker', dl:31767 },
+    { id:1952, t:'The Yellow Wallpaper', a:'Charlotte Perkins Gilman', dl:24101 },
+    { id:5200, t:'Metamorphosis', a:'Franz Kafka', dl:22516 },
+    { id:219, t:'Heart of Darkness', a:'Joseph Conrad', dl:14434 },
+    { id:36, t:'The War of the Worlds', a:'H. G. Wells', dl:10335 },
+  ]},
+  { cat: 'Poetry & Drama', books: [
+    { id:1513, t:'Romeo and Juliet', a:'Shakespeare', dl:69731 },
+    { id:16328, t:'Beowulf', a:'Unknown', dl:44066 },
+    { id:6130, t:'The Iliad', a:'Homer', dl:26270 },
+    { id:1727, t:'The Odyssey', a:'Homer', dl:20234 },
+    { id:8800, t:'The Divine Comedy', a:'Dante Alighieri', dl:18358 },
+    { id:26, t:'Paradise Lost', a:'John Milton', dl:14857 },
+    { id:1524, t:'Hamlet', a:'Shakespeare', dl:13347 },
+    { id:1322, t:'Leaves of Grass', a:'Walt Whitman', dl:9126 },
+    { id:228, t:'The Aeneid', a:'Virgil', dl:5733 },
+    { id:1533, t:'Macbeth', a:'Shakespeare', dl:5655 },
+    { id:1531, t:'Othello', a:'Shakespeare', dl:2192 },
+    { id:1532, t:'King Lear', a:'Shakespeare', dl:2072 },
+  ]},
+];
 
 async function fetchRetry(url, opts, retries=2) {
   for (let i = 0; i <= retries; i++) {
@@ -574,6 +663,15 @@ function loadBM(id) {
 }
 
 // ── Helpers ────────────────────────────────────────────────
+function stripGutenberg(text) {
+  // Strip header (everything up to and including *** START OF ... ***)
+  const startMatch = text.match(/\*{3}\s*START OF.*?\*{3}/i);
+  if (startMatch) text = text.slice(text.indexOf(startMatch[0]) + startMatch[0].length);
+  // Strip footer (everything from *** END OF ... *** onward)
+  const endMatch = text.match(/\*{3}\s*END OF.*?\*{3}/i);
+  if (endMatch) text = text.slice(0, text.indexOf(endMatch[0]));
+  return text.trim();
+}
 function tokenize(t) {
   return t.split(/\s+/).filter(w => w.length > 0 && /[a-zA-Z0-9]/.test(w));
 }
@@ -868,8 +966,9 @@ async function openBook(id) {
   S.textCache[id]=text; IDB.set(id, text);
   S.currentBook=meta;
   saveSettings();
-  S.words = await tokenizeAsync(text);
-  S.chapters=detectChapters(text);
+  const bodyText = stripGutenberg(text);
+  S.words = await tokenizeAsync(bodyText);
+  S.chapters=detectChapters(bodyText);
   S.wordIndex=Math.min(loadBM(id), S.words.length-1);
   S.playing=false;
   S.sessionWordsRead = 0;
@@ -1324,8 +1423,7 @@ async function searchGutenberg(query) {
   if (!query.trim()) return;
   document.getElementById('gutenSearch').value=query;
   document.getElementById('gutenResults').innerHTML='<div style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 12px"></div>Searching...</div>';
-  document.getElementById('gutenEmpty').classList.add('hidden');
-  document.getElementById('gutenSuggestions').classList.add('hidden');
+  document.getElementById('gutenFeatured').style.display='none';
   try {
     const res=await fetch(`${GUTENBERG_API}?search=${encodeURIComponent(query)}&languages=en`);
     const data=await res.json();
@@ -1361,15 +1459,53 @@ async function downloadGuten(idx) {
   showLoading(`Downloading "${book.title}"...`);
   try {
     const fmt=book.formats||{};
-    const url=fmt['text/plain; charset=utf-8']||fmt['text/plain']||fmt['text/plain; charset=us-ascii']||Object.entries(fmt).find(([k])=>k.startsWith('text/plain'))?.[1];
-    if (!url) { alert('No text version.'); hideLoading(); return; }
+    // Prefer proper text files, skip readme/metadata files
+    const candidates=Object.entries(fmt).filter(([k,v])=>k.startsWith('text/plain')&&!v.includes('-readme'));
+    const url=(candidates.find(([k])=>k==='text/plain; charset=utf-8')||candidates.find(([k])=>k==='text/plain')||candidates.find(([k])=>k==='text/plain; charset=us-ascii')||candidates[0])?.[1];
+    if (!url) { alert('No text version available for this edition.'); hideLoading(); return; }
     const res=await proxyFetch(url);
     const text=await res.text();
+    const wc=text.split(/\s+/).length;
+    if (wc<1000) { hideLoading(); alert(`This edition only has ${wc.toLocaleString()} words — likely an audiobook listing or metadata, not the full text. Try a different edition.`); return; }
     const author=book.authors?.[0]?.name||'Unknown';
     const meta=await importBook(`${book.title} — ${author}`, text, 'gutenberg');
     renderLibrary();
     await openBook(meta.id);
   } catch(e) { alert('Download failed: '+e.message); hideLoading(); }
+}
+
+async function downloadFeatured(gutenId, title, author, btn) {
+  btn.disabled=true; btn.textContent='...';
+  showLoading(`Downloading "${title}"...`);
+  try {
+    const res=await fetch(`${GUTENBERG_API}/${gutenId}`);
+    const book=await res.json();
+    const fmt=book.formats||{};
+    const candidates=Object.entries(fmt).filter(([k,v])=>k.startsWith('text/plain')&&!v.includes('-readme'));
+    const url=(candidates.find(([k])=>k==='text/plain; charset=utf-8')||candidates.find(([k])=>k==='text/plain')||candidates.find(([k])=>k==='text/plain; charset=us-ascii')||candidates[0])?.[1];
+    if (!url) { alert('No text version.'); hideLoading(); btn.disabled=false; btn.textContent='Add'; return; }
+    const tRes=await proxyFetch(url);
+    const text=await tRes.text();
+    const wc=text.split(/\s+/).length;
+    if (wc<1000) { hideLoading(); alert('This version has too few words. Try searching for it instead.'); btn.disabled=false; btn.textContent='Add'; return; }
+    const meta=await importBook(`${title} — ${author}`, text, 'gutenberg');
+    renderLibrary();
+    btn.textContent='Added';
+    await openBook(meta.id);
+  } catch(e) { alert('Download failed: '+e.message); btn.disabled=false; btn.textContent='Add'; hideLoading(); }
+}
+
+function renderFeatured() {
+  const el=document.getElementById('gutenFeatured');
+  const fmtDl=n=>n>=1000?(n/1000).toFixed(n>=10000?0:1)+'k':n.toString();
+  el.innerHTML=FEATURED_BOOKS.map(section=>{
+    const rows=section.books.map(b=>`<div class="featured-row" onclick="downloadFeatured(${b.id},'${b.t.replace(/'/g,"\\'")}','${b.a.replace(/'/g,"\\'")}',this)">
+        <span class="fb-dl">${fmtDl(b.dl)}</span>
+        <span class="fb-title">${esc(b.t)}</span>
+        <span class="fb-author">${esc(b.a)}</span>
+      </div>`).join('');
+    return `<div class="featured-section"><h3>${esc(section.cat)}</h3><div class="featured-log">${rows}</div></div>`;
+  }).join('');
 }
 
 // ── TTS (Web Speech API) ────────────────────────────────────
@@ -1554,6 +1690,7 @@ function goToLibrary() {
   document.getElementById('blockIndicator').classList.add('hidden');
   document.getElementById('blockLabel').classList.add('hidden');
   document.getElementById('wordDisplay').className = 'word-display';
+  document.getElementById('readerView').classList.remove('digest-reading');
   document.getElementById('readerView').classList.remove('active');
   document.getElementById('libraryView').classList.add('active');
   renderLibrary();
@@ -1686,10 +1823,19 @@ document.getElementById('pasteArea').addEventListener('input', e=>{
 
 // ── Dev Digest System ───────────────────────────────────────
 const DIGEST_SESSIONS = [];
+// Load local digests from localStorage first
+try {
+  const localDigests = JSON.parse(localStorage.getItem('localDigests') || '[]');
+  localDigests.forEach(s => DIGEST_SESSIONS.push(s));
+} catch {}
+// Then load API digests, deduplicating by id
 fetch('/api/digests').then(r=>r.ok?r.json():[]).then(sessions=>{
-  sessions.forEach(s=>DIGEST_SESSIONS.push(s));
+  const existingIds = new Set(DIGEST_SESSIONS.map(s => s.id));
+  sessions.forEach(s => { if (!existingIds.has(s.id)) DIGEST_SESSIONS.push(s); });
   if(document.getElementById('tabDigest').classList.contains('active')) renderDigestList();
 }).catch(()=>{});
+// Render immediately if local digests were loaded
+if (DIGEST_SESSIONS.length && document.getElementById('tabDigest').classList.contains('active')) renderDigestList();
 
 // Digest state
 S.digestMode = false;   // true when RSVP-ing a digest
@@ -1704,19 +1850,137 @@ const TAG_COLORS = {
   decision: { bg:'#a855f720', fg:'#a855f7', border:'#a855f760', label:'DECIDE' },
 };
 
+function submitPastedDigest() {
+  const raw = document.getElementById('digestPasteText').value.trim();
+  if (!raw) { showToast('Paste some dev notes first'); return; }
+
+  // First line is the title, rest are blocks
+  const lines = raw.split('\n');
+  const title = lines[0].replace(/^#+\s*/, '').trim();
+  const body = lines.slice(1).join('\n').trim();
+
+  // Parse paragraphs into blocks
+  const TAG_RE = /^(DONE|HIGH|CRITICAL|INFO|DECIDE)[:\s]+/i;
+  const paragraphs = body ? body.split(/\n\n+/).map(p => p.trim()).filter(Boolean) : [];
+  const blocks = paragraphs.length > 0 ? paragraphs.map(para => {
+    const m = para.match(TAG_RE);
+    if (m) return { tag: m[1].toLowerCase(), text: para.slice(m[0].length).trim() };
+    return { tag: 'info', text: para };
+  }) : [{ tag: 'info', text: title }];
+
+  const session = {
+    id: 'paste-' + Date.now(),
+    title,
+    project: 'Dev Notes',
+    time: new Date().toISOString(),
+    blocks
+  };
+
+  // Add locally
+  DIGEST_SESSIONS.unshift(session);
+
+  // Try to persist to API (best-effort)
+  fetch('/api/digests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(session)
+  }).catch(() => {});
+
+  // Save to localStorage for persistence without KV
+  try {
+    const stored = JSON.parse(localStorage.getItem('localDigests') || '[]');
+    stored.unshift(session);
+    localStorage.setItem('localDigests', JSON.stringify(stored.slice(0, 50)));
+  } catch {}
+
+  // Reset form
+  document.getElementById('digestPasteText').value = '';
+  renderDigestList();
+  showToast(`Digest created: ${blocks.length} blocks`);
+}
+
+function exportDigest(id) {
+  const session = DIGEST_SESSIONS.find(s => s.id === id);
+  if (!session) return;
+  const d = JSON.stringify(session.blocks);
+  const t = session.title.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${t} — RSVP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#121010;color:#e8e0d8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+.bar{padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a3530;font-size:14px}
+.bar .title{font-weight:600;opacity:0.7}
+.tag-ind{font-size:11px;font-weight:600}
+.word-area{flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;padding:40px 24px}
+.word{font-family:Georgia,'Times New Roman',serif;font-size:64px;letter-spacing:0.02em;white-space:nowrap}
+.word .o{color:#e84040;font-weight:700}
+.label{position:absolute;bottom:20px;left:16px;right:16px;text-align:center;font-size:12px;color:#8a8078;opacity:0.5}
+.strip{padding:12px 16px 20px;display:flex;align-items:center;justify-content:center;gap:12px}
+.strip button{background:#1e1b18;border:1px solid #3a3530;color:#e8e0d8;border-radius:6px;padding:8px 14px;font-size:14px;cursor:pointer}
+.strip button:hover{border-color:#e84040}
+.strip .play{padding:8px 20px;font-size:16px}
+.wpm-row{display:flex;align-items:center;gap:6px;font-size:11px;color:#8a8078}
+.wpm-row input{width:70px;accent-color:#e84040;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:#e8e0d8;opacity:0.1;outline:none}
+.wpm-row input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#e84040;cursor:pointer}
+.info{font-size:11px;color:#8a8078;text-align:center;padding:4px}
+.tc{color:#e84040}.th{color:#e88400}.td{color:#40b860}.ti{color:#4088e8}.tD{color:#a855f7}
+</style></head><body>
+<div class="bar"><span class="title">${t}</span><span class="tag-ind" id="ti"></span></div>
+<div class="word-area" id="wa" onclick="toggle()"><div class="word" id="w"></div><div class="label" id="lb"></div></div>
+<div class="info" id="inf"></div>
+<div class="strip">
+<button onclick="skip(-10)">◁</button>
+<button class="play" id="pb" onclick="toggle()">▶</button>
+<button onclick="skip(10)">▷</button>
+<div class="wpm-row"><span id="wl">300</span><input type="range" min="50" max="1200" step="10" value="300" oninput="wpm=+this.value;document.getElementById('wl').textContent=wpm"></div>
+</div>
+<script>
+const blocks=${d};
+const TC={critical:'tc',high:'th',done:'td',info:'ti',decision:'tD'};
+const TL={critical:'CRITICAL',high:'HIGH',done:'DONE',info:'INFO',decision:'DECIDE'};
+const words=[],bounds=[];
+blocks.forEach((b,i)=>{bounds.push({wi:words.length,tag:b.tag,i:i,text:b.text});b.text.split(/\\s+/).filter(w=>w.length>0&&/[a-zA-Z0-9]/.test(w)).forEach(w=>words.push(w))});
+let idx=0,playing=false,wpm=300,timer=null;
+function orp(w){const c=w.replace(/[^a-zA-Z0-9]/g,''),len=c.length;if(len<=1)return 0;if(len<=5)return 1;if(len<=9)return 2;if(len<=13)return 3;return 4}
+function render(){const w=words[idx]||'';const el=document.getElementById('w');const o=orp(w);let cc=0,b='',m='',a='';for(let i=0;i<w.length;i++){const ch=w[i],isA=/[a-zA-Z0-9]/.test(ch);if(isA){if(cc<o)b+=ch;else if(cc===o)m+=ch;else a+=ch;cc++}else{if(cc<=o)b+=ch;else a+=ch}}el.innerHTML=b+'<span class="o">'+m+'</span>'+a;
+let cur=bounds[0];for(const bd of bounds){if(idx>=bd.wi)cur=bd;else break}
+document.getElementById('ti').className='tag-ind '+(TC[cur.tag]||'ti');document.getElementById('ti').textContent=TL[cur.tag]+' · '+(cur.i+1)+'/'+blocks.length;
+document.getElementById('lb').textContent=cur.text.length>80?cur.text.slice(0,80)+'…':cur.text;
+const left=Math.ceil((words.length-idx)/(wpm/60));document.getElementById('inf').textContent=idx+' / '+words.length+' · '+(left>60?Math.ceil(left/60)+'m':left+'s')}
+function tick(){if(!playing||idx>=words.length-1){playing=false;document.getElementById('pb').textContent='▶';return}
+const w=words[idx]||'';let d=60000/wpm;if(/[.!?]$/.test(w))d*=1.8;else if(/[,;:]$/.test(w))d*=1.3;
+const ni=idx+1;const isBound=bounds.some(b=>b.wi===ni);if(isBound)d+=1000;
+timer=setTimeout(()=>{idx=Math.min(idx+1,words.length-1);render();tick()},d)}
+function toggle(){playing=!playing;document.getElementById('pb').textContent=playing?'❚❚':'▶';if(playing)tick();else clearTimeout(timer)}
+function skip(n){idx=Math.max(0,Math.min(idx+n,words.length-1));render()}
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();toggle()}if(e.code==='ArrowRight')skip(10);if(e.code==='ArrowLeft')skip(-10);if(e.code==='ArrowUp'){wpm=Math.min(wpm+25,1200);document.querySelector('input[type=range]').value=wpm;document.getElementById('wl').textContent=wpm}if(e.code==='ArrowDown'){wpm=Math.max(wpm-25,50);document.querySelector('input[type=range]').value=wpm;document.getElementById('wl').textContent=wpm}});
+render();
+<\/script></body></html>`;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (session.title.replace(/[^a-zA-Z0-9\s-]/g,'').trim().replace(/\s+/g,'-').toLowerCase() || 'digest') + '-rsvp.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported standalone RSVP file');
+}
+
 function renderDigestList() {
   const el = document.getElementById('digestList');
   el.innerHTML = DIGEST_SESSIONS.map((session, si) => {
     const tagCounts = {};
     session.blocks.forEach(b => { tagCounts[b.tag] = (tagCounts[b.tag]||0) + 1; });
     const tags = Object.entries(tagCounts).map(([tag, count]) => {
-      const c = TAG_COLORS[tag];
+      const c = TAG_COLORS[tag] || TAG_COLORS.info;
       return `<span class="digest-tag" style="background:${c.bg};color:${c.fg};border:1px solid ${c.border}">${c.label} ×${count}</span>`;
     }).join('');
     const timeStr = new Date(session.time).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
 
     const blockListHtml = session.blocks.map((b,bi) => {
-      const c = TAG_COLORS[b.tag];
+      const c = TAG_COLORS[b.tag] || TAG_COLORS.info;
       return `<div style="padding:8px 12px;font-size:13px;line-height:1.5;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start">
         <span style="color:${c.fg};font-weight:700;font-size:10px;min-width:52px;padding-top:2px">${c.label}</span>
         <span style="color:var(--text);opacity:0.85">${esc(b.text)}</span>
@@ -1727,7 +1991,10 @@ function renderDigestList() {
       <button class="digest-card" type="button" data-digestid="${session.id}">
         <div class="digest-header">
           <span class="digest-title">${esc(session.title)}</span>
-          <span class="digest-time">${timeStr}</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <span class="digest-export" title="Export standalone RSVP" onclick="event.stopPropagation();exportDigest('${session.id}')">↗</span>
+            <span class="digest-time">${timeStr}</span>
+          </span>
         </div>
         <div style="font-size:11px;color:var(--dim);margin-bottom:6px;opacity:0.7">${esc(session.project)}</div>
         <div class="digest-stats">${tags}</div>
@@ -1776,17 +2043,23 @@ function openDigest(id) {
     index: b.wordIndex
   }));
 
+  S.sessionWordsRead = 0;
+  S.sessionStartTime = null;
+
   // Switch to reader
   document.getElementById('libraryView').classList.remove('active');
   document.getElementById('readerView').classList.add('active');
+  document.getElementById('readerView').classList.add('digest-reading');
   document.getElementById('readerBookTitle').textContent = session.title;
 
+  cacheWordArea();
   updateDigestIndicator();
   renderWord(S.words[0], S.fontSize);
   updateProgress(); updatePlayBtn();
 
   // TOC sidebar
   renderTOC();
+  drawMinimap();
   renderBookmarks();
 }
 
@@ -1810,7 +2083,7 @@ function updateDigestIndicator() {
   }
   const block = getCurrentDigestBlock();
   if (!block) return;
-  const c = TAG_COLORS[block.tag];
+  const c = TAG_COLORS[block.tag] || TAG_COLORS.info;
   indicator.classList.remove('hidden');
   indicator.style.color = c.fg;
   indicator.textContent = `${c.label} · ${block.blockIdx+1}/${S.digestBlocks.length}`;
@@ -1831,6 +2104,16 @@ async function loadGenerativeEnergy() {
     GENERATIVE_ENERGY_TEXT = await res.text();
   } catch { GENERATIVE_ENERGY_TEXT = ''; }
   return GENERATIVE_ENERGY_TEXT;
+}
+
+let THE_VERDICT_TEXT = null;
+async function loadTheVerdict() {
+  if (THE_VERDICT_TEXT) return THE_VERDICT_TEXT;
+  try {
+    const res = await fetch('/the-verdict.txt');
+    THE_VERDICT_TEXT = await res.text();
+  } catch { THE_VERDICT_TEXT = ''; }
+  return THE_VERDICT_TEXT;
 }
 
 // ── Init ───────────────────────────────────────────────────
@@ -1891,8 +2174,8 @@ async function migrateFromLocalStorage() {
   if (S.theme === 'light') document.body.classList.add('light');
   if (S.accent) setAccent(S.accent);
   document.getElementById('accelTarget').value = S.accelTarget;
-  // Render suggestions
-  document.getElementById('gutenSuggestions').innerHTML=SUGGESTIONS.map(s=>`<button class="chip" onclick="searchGutenberg('${s}')">${s}</button>`).join('');
+  // Render featured books
+  renderFeatured();
 
   // Migrate from localStorage if needed (one-time)
   await migrateFromLocalStorage();
@@ -1909,6 +2192,17 @@ async function migrateFromLocalStorage() {
     S.textCache[geId] = geText;
     S.library.unshift(geMeta);
     await saveBook(geId, geMeta.title, geWordCount, 'bundled', geText);
+  }
+
+  // Seed The Verdict if not already in library
+  if (!S.library.some(b => b.title === 'The Verdict: This is a Beast')) {
+    const tvText = await loadTheVerdict();
+    const tvId = 'book-the-verdict-codebase-audit';
+    const tvWordCount = tokenize(tvText).length;
+    const tvMeta = {id: tvId, title: 'The Verdict: This is a Beast', wordCount: tvWordCount, source: 'bundled', addedAt: new Date().toISOString(), wordIndex: 0};
+    S.textCache[tvId] = tvText;
+    S.library.unshift(tvMeta);
+    await saveBook(tvId, tvMeta.title, tvWordCount, 'bundled', tvText);
   }
   renderLibrary();
 
