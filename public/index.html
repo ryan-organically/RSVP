@@ -61,10 +61,26 @@
   .btn-primary { background: var(--accent); color: #fff; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; }
   .btn-outline { border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 500; transition: all 0.15s; }
 
-  .book-card { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); width: 100%; text-align: left; transition: background 0.15s; margin-bottom: 8px; -webkit-touch-callout: none; }
-  .book-card:hover { background: var(--hover); } .book-card:active { transform: scale(0.98); }
-  .book-title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .book-meta { font-size: 12px; color: var(--dim); margin-top: 3px; }
+  .book-table { width: 100%; border-collapse: collapse; }
+  .book-table thead th { font-size: 10px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .book-table thead th:last-child { text-align: right; width: 28px; }
+  .book-row { cursor: pointer; transition: background 0.12s; }
+  .book-row:hover { background: var(--hover); }
+  .book-row:active { background: var(--surface); }
+  .book-row td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; white-space: nowrap; }
+  .book-row td:first-child { font-weight: 600; font-size: 14px; white-space: normal; word-break: break-word; max-width: 0; width: 100%; }
+  .book-row td.col-words { color: var(--dim); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .book-row td.col-source { color: var(--dim); font-size: 11px; }
+  .book-row td.col-progress { font-size: 12px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; text-align: right; min-width: 40px; }
+  .book-row td.col-progress .progress-bar { display: inline-block; width: 40px; height: 3px; background: var(--border); border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .book-row td.col-progress .progress-fill { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  .book-row .del-x { color: var(--dim); opacity: 0.3; font-size: 12px; cursor: pointer; transition: opacity 0.15s; text-align: right; }
+  .book-row:hover .del-x { opacity: 0.7; }
+  .book-row .del-x:hover { opacity: 1; color: #e84040; }
+  @media(max-width:600px) {
+    .book-row td.col-source { display: none; }
+    .book-table thead th.col-source { display: none; }
+  }
 
   .search-row { display: flex; gap: 8px; margin-bottom: 20px; }
   .search-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 14px; font-size: 14px; outline: none; }
@@ -925,23 +941,30 @@ function renderLibrary() {
     el.innerHTML='<div class="empty-state"><div class="empty-icon">📚</div><p>No books yet. Upload a file or search the Free Library tab.</p></div>';
     return;
   }
-  el.innerHTML = S.library.map(b => {
+  const sourceLabel = s => s==='gutenberg'?'Gutenberg':s==='bundled'?'Bundled':'Import';
+  const formatWords = n => n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?Math.round(n/1000)+'K':n.toString();
+  const rows = S.library.map(b => {
     const bm = loadBM(b.id);
     const wc = b.wordCount || 0;
     const pct = wc > 0 && bm > 0 ? Math.round((bm / wc) * 100) : 0;
-    const progressHtml = pct > 0 ? `<span style="font-size:11px;color:var(--accent);font-weight:600">${pct}%</span>` : '';
-    return `<button class="book-card" type="button" data-bookid="${b.id}">
-      <div style="flex:1;min-width:0;text-align:left">
-        <div class="book-title">${esc(b.title)}</div>
-        <div class="book-meta">${wc.toLocaleString()} words · ${b.source==='gutenberg'?'Project Gutenberg':b.source==='bundled'?'Bundled':'Imported'} ${progressHtml}</div>
-      </div>
-      <span class="del-x" data-delid="${b.id}">✕</span>
-    </button>`;
+    const progressHtml = pct > 0
+      ? `<span class="progress-bar"><span class="progress-fill" style="width:${pct}%"></span></span>${pct}%`
+      : '';
+    return `<tr class="book-row" data-bookid="${b.id}">
+      <td>${esc(b.title)}</td>
+      <td class="col-words">${formatWords(wc)}</td>
+      <td class="col-source">${sourceLabel(b.source)}</td>
+      <td class="col-progress">${progressHtml}</td>
+      <td><span class="del-x" data-delid="${b.id}">✕</span></td>
+    </tr>`;
   }).join('');
+  el.innerHTML = `<table class="book-table">
+    <thead><tr><th>Title</th><th>Words</th><th class="col-source">Source</th><th style="text-align:right">Progress</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 
-  // Attach events via delegation
-  el.querySelectorAll('.book-card').forEach(card => {
-    card.addEventListener('click', function(e) {
+  el.querySelectorAll('.book-row').forEach(row => {
+    row.addEventListener('click', function(e) {
       if (e.target.closest('.del-x')) {
         e.stopPropagation();
         confirmDelete(e.target.closest('.del-x').dataset.delid);
@@ -954,9 +977,9 @@ function renderLibrary() {
 
 function filterLibrary(q) {
   q = q.toLowerCase().trim();
-  document.querySelectorAll('#bookList .book-card').forEach(card => {
-    const title = card.querySelector('.book-title')?.textContent.toLowerCase() || '';
-    card.style.display = !q || title.includes(q) ? '' : 'none';
+  document.querySelectorAll('#bookList .book-row').forEach(row => {
+    const title = row.querySelector('td')?.textContent.toLowerCase() || '';
+    row.style.display = !q || title.includes(q) ? '' : 'none';
   });
 }
 
