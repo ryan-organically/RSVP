@@ -1833,9 +1833,26 @@ fetch('/api/digests').then(r=>r.ok?r.json():[]).then(sessions=>{
   const existingIds = new Set(DIGEST_SESSIONS.map(s => s.id));
   sessions.forEach(s => { if (!existingIds.has(s.id)) DIGEST_SESSIONS.push(s); });
   if(document.getElementById('tabDigest').classList.contains('active')) renderDigestList();
+  // Auto-open digest from ?digest=<id> query param
+  checkDigestQueryParam();
 }).catch(()=>{});
 // Render immediately if local digests were loaded
 if (DIGEST_SESSIONS.length && document.getElementById('tabDigest').classList.contains('active')) renderDigestList();
+
+// Check URL for ?digest=<id> and auto-open
+function checkDigestQueryParam() {
+  const params = new URLSearchParams(window.location.search);
+  const digestId = params.get('digest');
+  if (!digestId) return;
+  const session = DIGEST_SESSIONS.find(s => s.id === digestId);
+  if (session) {
+    switchTab('digest');
+    renderDigestList();
+    openDigest(digestId);
+    // Clean URL without reloading
+    history.replaceState(null, '', window.location.pathname);
+  }
+}
 
 // Digest state
 S.digestMode = false;   // true when RSVP-ing a digest
@@ -2116,6 +2133,18 @@ async function loadTheVerdict() {
   return THE_VERDICT_TEXT;
 }
 
+let NABRE_TEXT = null;
+async function loadNabre() {
+  if (NABRE_TEXT) return NABRE_TEXT;
+  try {
+    showLoading('Loading NABRE Bible (4 MB)...');
+    const res = await fetch('/nabre.txt');
+    NABRE_TEXT = await res.text();
+    hideLoading();
+  } catch { NABRE_TEXT = ''; hideLoading(); }
+  return NABRE_TEXT;
+}
+
 // ── Init ───────────────────────────────────────────────────
 
 // ── localStorage Migration (one-time) ──────────────────────
@@ -2203,6 +2232,19 @@ async function migrateFromLocalStorage() {
     S.textCache[tvId] = tvText;
     S.library.unshift(tvMeta);
     await saveBook(tvId, tvMeta.title, tvWordCount, 'bundled', tvText);
+  }
+
+  // Seed NABRE Bible if not already in library
+  if (!S.library.some(b => b.title === 'NABRE Bible')) {
+    const nabreText = await loadNabre();
+    if (nabreText) {
+      const nabreId = 'book-nabre-bible';
+      const nabreWordCount = tokenize(nabreText).length;
+      const nabreMeta = {id: nabreId, title: 'NABRE Bible', wordCount: nabreWordCount, source: 'bundled', addedAt: new Date().toISOString(), wordIndex: 0};
+      S.textCache[nabreId] = nabreText;
+      S.library.unshift(nabreMeta);
+      await saveBook(nabreId, nabreMeta.title, nabreWordCount, 'bundled', nabreText);
+    }
   }
   renderLibrary();
 
