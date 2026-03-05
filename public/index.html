@@ -74,6 +74,14 @@
   .book-row td.col-progress { font-size: 13px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; text-align: right; min-width: 48px; }
   .book-row td.col-progress .progress-bar { display: inline-block; width: 48px; height: 4px; background: var(--border); border-radius: 2px; vertical-align: middle; margin-right: 6px; }
   .book-row td.col-progress .progress-fill { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  .book-row td.col-tag { position: relative; padding-left: 8px; padding-right: 8px; }
+  .tag-pill { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; text-transform: uppercase; transition: filter 0.12s; }
+  .tag-pill:hover { filter: brightness(1.15); }
+  .tag-picker { display: none; position: absolute; left: 8px; top: 100%; z-index: 30; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.25); padding: 6px; min-width: 120px; }
+  .tag-picker.open { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag-opt { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; text-transform: uppercase; transition: border-color 0.1s; }
+  .tag-opt:hover { filter: brightness(1.1); }
+  .tag-opt.selected { border-color: var(--text); }
   .book-row .row-menu { position: relative; }
   .book-row .menu-dots { color: var(--dim); opacity: 0.3; font-size: 18px; cursor: pointer; transition: opacity 0.15s; line-height: 1; padding: 2px 4px; letter-spacing: 1px; }
   .book-row:hover .menu-dots { opacity: 0.7; }
@@ -942,6 +950,30 @@ function updatePlayBtn() {
   if (sb) { sb.textContent = S.playing ? '❚❚' : '▶'; sb.classList.toggle('playing', S.playing); }
 }
 
+const BOOK_TAGS = {
+  book:    { label: 'Book',       bg: '#2563eb', fg: '#fff' },
+  bible:   { label: 'Bible',      bg: '#7c3aed', fg: '#fff' },
+  digest:  { label: 'Dev Digest', bg: '#059669', fg: '#fff' },
+  article: { label: 'Article',    bg: '#d97706', fg: '#fff' },
+  paper:   { label: 'Paper',      bg: '#dc2626', fg: '#fff' },
+  notes:   { label: 'Notes',      bg: '#6b7280', fg: '#fff' },
+};
+function loadBookTags() { try { return JSON.parse(localStorage.getItem('rsvp-tags')||'{}'); } catch { return {}; } }
+function saveBookTag(bookId, tag) { const t=loadBookTags(); t[bookId]=tag; localStorage.setItem('rsvp-tags',JSON.stringify(t)); }
+function guessTag(b) {
+  const t=b.title.toLowerCase();
+  if (t.includes('bible')||t.includes('nabre')||t.includes('testament')) return 'bible';
+  if (b.source==='bundled'&&(t.includes('digest')||t.includes('verdict'))) return 'digest';
+  if (t.includes('digest')||t.includes('sprint')||t.includes('standup')) return 'digest';
+  return 'book';
+}
+function getBookTag(b) { return loadBookTags()[b.id] || guessTag(b); }
+function tagPillHtml(bookId, tag) {
+  const t=BOOK_TAGS[tag]||BOOK_TAGS.book;
+  const opts=Object.entries(BOOK_TAGS).map(([k,v])=>`<span class="tag-opt${k===tag?' selected':''}" data-tag="${k}" data-bookid="${bookId}" style="background:${v.bg};color:${v.fg}">${v.label}</span>`).join('');
+  return `<span class="tag-pill" data-bookid="${bookId}" style="background:${t.bg};color:${t.fg}">${t.label}</span><div class="tag-picker" id="tagpick-${bookId}">${opts}</div>`;
+}
+
 function renderLibrary() {
   const el=document.getElementById('bookList');
   if (S.library.length===0) {
@@ -957,8 +989,10 @@ function renderLibrary() {
     const progressHtml = pct > 0
       ? `<span class="progress-bar"><span class="progress-fill" style="width:${pct}%"></span></span>${pct}%`
       : '';
+    const tag = getBookTag(b);
     return `<tr class="book-row" data-bookid="${b.id}">
       <td>${esc(b.title)}</td>
+      <td class="col-tag">${tagPillHtml(b.id, tag)}</td>
       <td class="col-words">${formatWords(wc)}</td>
       <td class="col-source">${sourceLabel(b.source)}</td>
       <td class="col-progress">${progressHtml}</td>
@@ -966,17 +1000,35 @@ function renderLibrary() {
     </tr>`;
   }).join('');
   el.innerHTML = `<table class="book-table">
-    <thead><tr><th>Title</th><th>Words</th><th class="col-source">Source</th><th style="text-align:right">Progress</th><th></th></tr></thead>
+    <thead><tr><th>Title</th><th>Tag</th><th>Words</th><th class="col-source">Source</th><th style="text-align:right">Progress</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 
   el.querySelectorAll('.book-row').forEach(row => {
     row.addEventListener('click', function(e) {
-      if (e.target.closest('.menu-dots') || e.target.closest('.row-dropdown')) {
+      if (e.target.closest('.menu-dots') || e.target.closest('.row-dropdown') || e.target.closest('.col-tag')) {
         e.stopPropagation();
         return;
       }
       openBook(this.dataset.bookid);
+    });
+  });
+  el.querySelectorAll('.tag-pill').forEach(pill => {
+    pill.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const id = this.dataset.bookid;
+      const picker = document.getElementById('tagpick-'+id);
+      const wasOpen = picker.classList.contains('open');
+      document.querySelectorAll('.tag-picker.open').forEach(p => p.classList.remove('open'));
+      if (!wasOpen) picker.classList.add('open');
+    });
+  });
+  el.querySelectorAll('.tag-opt').forEach(opt => {
+    opt.addEventListener('click', function(e) {
+      e.stopPropagation();
+      saveBookTag(this.dataset.bookid, this.dataset.tag);
+      document.querySelectorAll('.tag-picker.open').forEach(p => p.classList.remove('open'));
+      renderLibrary();
     });
   });
   el.querySelectorAll('.menu-dots').forEach(dot => {
@@ -1891,6 +1943,7 @@ document.addEventListener('click', e=>{
   const pop=document.getElementById('settingsPopover');
   if (!pop.classList.contains('hidden') && !pop.contains(e.target) && !e.target.closest('[title=Settings]')) pop.classList.add('hidden');
   if (!e.target.closest('.row-menu')) document.querySelectorAll('.row-dropdown.open').forEach(d=>d.classList.remove('open'));
+  if (!e.target.closest('.col-tag')) document.querySelectorAll('.tag-picker.open').forEach(p=>p.classList.remove('open'));
 });
 
 // ── Paste area toggle ──────────────────────────────────────
