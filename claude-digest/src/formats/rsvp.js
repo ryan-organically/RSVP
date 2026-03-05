@@ -57,8 +57,9 @@ export async function formatRSVP(digest, meta = {}) {
 })();
 </script>`;
 
-  // Insert before closing </body>
-  html = html.replace('</body>', autoOpenScript + '\n</body>');
+  // Insert before closing </body> (use lastIndexOf — first match may be inside a template string)
+  const idx = html.lastIndexOf('</body>');
+  html = html.slice(0, idx) + autoOpenScript + '\n' + html.slice(idx);
 
   return html;
 }

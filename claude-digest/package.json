@@ -4,7 +4,8 @@
   "description": "Generate RSVP Dev Digest summaries from Claude Code sessions",
   "type": "module",
   "bin": {
-    "claude-digest": "./bin/claude-digest.js"
+    "claude-digest": "./bin/claude-digest.js",
+    "rsvp-pipe": "./bin/rsvp-pipe.js"
   },
   "engines": {
     "node": ">=18.3.0"

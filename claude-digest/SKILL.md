@@ -9,7 +9,7 @@ Generate a session digest by running the claude-digest CLI tool.
 Run the tool against the most recent session transcript:
 
 ```bash
-node /home/ryan-organically/dev/RSVP/claude-digest/bin/claude-digest.js --latest $ARGUMENTS
+node ./claude-digest/bin/claude-digest.js --latest $ARGUMENTS
 ```
 
 The output is an RSVP Reader-compatible digest with tagged blocks:

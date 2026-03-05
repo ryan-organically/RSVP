@@ -38,6 +38,14 @@ async function ensureSchema() {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(book_id, word_index)
     );
+    CREATE TABLE IF NOT EXISTS digests (
+      id         TEXT PRIMARY KEY,
+      title      TEXT NOT NULL,
+      project    TEXT NOT NULL DEFAULT '',
+      time       TEXT NOT NULL DEFAULT (datetime('now')),
+      blocks     TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
   migrated = true;
 }

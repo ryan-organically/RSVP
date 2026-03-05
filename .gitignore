@@ -3,6 +3,7 @@ node_modules/
 *.pdf
 .env
 .env.local
-claude-digest/node_modules/
-.vercel
 .env*.local
+claude-digest/node_modules/
+claude-digest/test-*.html
+.claude/settings.local.json
