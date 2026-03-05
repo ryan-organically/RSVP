@@ -2267,11 +2267,10 @@ let NABRE_TEXT = null;
 async function loadNabre() {
   if (NABRE_TEXT) return NABRE_TEXT;
   try {
-    showLoading('Loading NABRE Bible (4 MB)...');
     const res = await fetch('/nabre.txt');
+    if (!res.ok) return '';
     NABRE_TEXT = await res.text();
-    hideLoading();
-  } catch { NABRE_TEXT = ''; hideLoading(); }
+  } catch { NABRE_TEXT = ''; }
   return NABRE_TEXT;
 }
 
@@ -2364,17 +2363,21 @@ async function migrateFromLocalStorage() {
     await saveBook(tvId, tvMeta.title, tvWordCount, 'bundled', tvText);
   }
 
-  // Seed NABRE Bible if not already in library
-  if (!S.library.some(b => b.title === 'NABRE Bible')) {
-    const nabreText = await loadNabre();
-    if (nabreText) {
-      const nabreId = 'book-nabre-bible';
-      const nabreWordCount = tokenize(nabreText).length;
-      const nabreMeta = {id: nabreId, title: 'NABRE Bible', wordCount: nabreWordCount, source: 'bundled', addedAt: new Date().toISOString(), wordIndex: 0};
-      S.textCache[nabreId] = nabreText;
-      S.library.unshift(nabreMeta);
-      await saveBook(nabreId, nabreMeta.title, nabreWordCount, 'bundled', nabreText);
-    }
+  // Seed NABRE Bible if not already in library (background, non-blocking)
+  if (!S.library.some(b => b.id === 'book-nabre-bible')) {
+    loadNabre().then(async nabreText => {
+      if (!nabreText) return;
+      try {
+        const nabreId = 'book-nabre-bible';
+        const words = await tokenizeAsync(nabreText);
+        const nabreMeta = {id: nabreId, title: 'NABRE Bible', wordCount: words.length, source: 'bundled', addedAt: new Date().toISOString(), wordIndex: 0};
+        S.textCache[nabreId] = nabreText;
+        S.library.unshift(nabreMeta);
+        await saveBook(nabreId, nabreMeta.title, words.length, 'bundled', nabreText);
+        renderLibrary();
+        showToast('NABRE Bible added to library');
+      } catch(e) { console.warn('NABRE seed error:', e); }
+    });
   }
   renderLibrary();
 
