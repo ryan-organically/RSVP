@@ -704,6 +704,10 @@ function detectChapters(text) {
   if (text.includes('The First Book of Moses') && text.includes('The Revelation of Saint John')) {
     return detectBibleBooks(text);
   }
+  // NABRE detection
+  if (text.includes('NEW AMERICAN BIBLE') && text.includes('REVISED EDITION')) {
+    return detectNabreBooks(text);
+  }
   const lines=text.split('\n'), chs=[{title:'Start',index:0}];
   let wc=0;
   for (const line of lines) {
@@ -795,6 +799,32 @@ function detectBibleBooks(text) {
           parent.subchapters.push({title:'Chapter '+chapNum,num:chapNum,index:wc});
         }
       }
+    }
+    wc+=t.split(/\s+/).filter(w=>w).length;
+  }
+  return chs;
+}
+function detectNabreBooks(text) {
+  const lines=text.split('\n'), chs=[];
+  const sepLine='============================================================';
+  let wc=0, currentBook=null;
+  for (let i=0;i<lines.length;i++) {
+    const t=lines[i].trim();
+    // Detect book name: ALL CAPS line between === separators
+    if (t===sepLine && i+2<lines.length && lines[i+2].trim()===sepLine) {
+      const bookName=lines[i+1].trim();
+      if (/^[A-Z0-9 ]+$/.test(bookName) && bookName.length>1 && bookName!==sepLine) {
+        // Title-case the book name (keep small words lowercase)
+        const small=new Set(['of','the','and','in','to','a']);
+        const title=bookName.replace(/\w\S*/g, (w,i)=>{const lc=w.toLowerCase();return i>0&&small.has(lc)?lc:lc[0].toUpperCase()+lc.slice(1);});
+        currentBook={title,index:wc,subchapters:[]};
+        chs.push(currentBook);
+      }
+    }
+    // Detect chapter heading
+    const chMatch=t.match(/^Chapter\s+(\d+)$/);
+    if (chMatch && currentBook) {
+      currentBook.subchapters.push({title:'Chapter '+chMatch[1],num:parseInt(chMatch[1]),index:wc});
     }
     wc+=t.split(/\s+/).filter(w=>w).length;
   }
