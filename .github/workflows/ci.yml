@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-validate:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check JSON configs
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+
+      - name: Validate HTML
+        run: |
+          if ! head -1 public/index.html | grep -qi '<!doctype\|<html'; then
+            echo "::error::public/index.html missing doctype or html tag"
+            exit 1
+          fi
+
+      - name: Check for console.log in API routes
+        run: |
+          if grep -rn 'console\.log' api/ --include='*.js' | grep -v '// keep'; then
+            echo "::warning::Found console.log statements in API routes"
+          fi
+
+  security-check:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high || true
+
+      - name: Check for secrets in code
+        run: |
+          if grep -rPn '(TURSO_|DATABASE_URL|API_KEY|SECRET|TOKEN|PRIVATE_KEY)=[^\s]+' --include='*.js' --include='*.json' --include='*.html' --exclude-dir=node_modules . 2>/dev/null; then
+            echo "::error::Potential hardcoded secrets detected"
+            exit 1
+          fi
+
+  vercel-build:
+    name: Vercel Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify static assets exist
+        run: |
+          test -f public/index.html || (echo "::error::Missing public/index.html" && exit 1)
+          test -f public/sw.js || (echo "::error::Missing public/sw.js" && exit 1)
+          test -f vercel.json || (echo "::error::Missing vercel.json" && exit 1)
+
+      - name: Validate API route structure
+        run: |
+          for f in api/*.js api/**/*.js; do
+            [ -f "$f" ] || continue
+            if ! head -5 "$f" | grep -q 'export default\|module.exports'; then
+              echo "::warning::$f may not export a handler function"
+            fi
+          done
+
+      - name: Run build
+        run: npm run build
