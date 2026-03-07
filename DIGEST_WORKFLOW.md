@@ -21,7 +21,7 @@ All commands are zero-config. No API key needed — the current Claude Code sess
 
 ### /digest (Session Summary)
 
-Claude reviews the full conversation history and classifies everything into 10-20 tagged blocks. Each block is a verbose, standalone sentence with file names, line counts, and specifics.
+Claude reviews the full conversation history and classifies everything into 5-8 tagged blocks. Each block is a concise sentence with file names and specifics.
 
 ### /diff [branch] (Git Diff Digest)
 
@@ -31,10 +31,11 @@ Runs git commands to gather context, reads actual diff content, then generates t
 
 Both commands follow the same delivery:
 
-1. **Generate** — JSON digest with tagged blocks
-2. **Save locally** — `~/.claude/digests/<id>.json`
-3. **POST to API** — `/api/digests` on your RSVP Reader instance (persists to Turso)
-4. **Open browser** — Injects digest into RSVP Reader HTML, opens with auto-play
+1. **Generate** — Claude Code produces JSON digest with tagged blocks inline (no external API call)
+2. **Format** — CLI injects digest into a copy of `public/index.html`
+3. **Persist** — Injected script saves to browser `localStorage` (accumulates across sessions)
+4. **Open browser** — Launches the HTML file (macOS/Windows/WSL/Linux)
+5. **Sync** *(optional)* — With `--sync`, POSTs to `/api/digests` on your RSVP instance
 
 ---
 
@@ -78,12 +79,15 @@ Both commands follow the same delivery:
 
 ## Storage
 
-- **Local:** `~/.claude/digests/*.json`
-- **Remote:** Turso DB via `POST /api/digests` on your deployed instance
-- **Browser:** RSVP Reader loads from API on the Dev Digest tab
+- **Browser localStorage** — digests persist in `localDigests` key (up to 50), available in the Dev Digest tab
+- **Remote** *(opt-in)* — `POST /api/digests` on your deployed RSVP instance (requires `--sync` flag)
 
 ---
 
-## Legacy: claude-digest CLI
+## claude-digest CLI
 
-The `claude-digest` CLI in the `claude-digest/` directory still exists but is superseded by the slash commands. The CLI requires `ANTHROPIC_API_KEY` and parses `.jsonl` session transcripts — the slash commands do neither, generating digests directly from session context.
+The `claude-digest` CLI in the `claude-digest/` directory handles formatting and browser display only. Digests are generated inline by Claude Code — no API key needed. Pipe digest JSON into the CLI:
+
+```bash
+echo '<digest-json>' | node ./claude-digest/bin/claude-digest.js --inject --open
+```

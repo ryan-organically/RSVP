@@ -139,13 +139,40 @@ const injection = `
 <script>
 (function() {
   var d = ${JSON.stringify(session)};
+  // Persist to localStorage
+  try {
+    var stored = JSON.parse(localStorage.getItem('localDigests') || '[]');
+    if (!stored.some(function(s) { return s.id === d.id; })) {
+      stored.unshift(d);
+      localStorage.setItem('localDigests', JSON.stringify(stored.slice(0, 50)));
+    }
+  } catch(e) {}
   // Wait for everything to be ready, then inject and open
   window.addEventListener('load', function() {
     setTimeout(function() {
-      DIGEST_SESSIONS.unshift(d);
+      if (!DIGEST_SESSIONS.some(function(s) { return s.id === d.id; })) {
+        DIGEST_SESSIONS.unshift(d);
+      }
       switchTab('digest');
       renderDigestList();
       setTimeout(function() { openDigest(d.id); }, 200);
+      // Override back button to return to digest list
+      var _orig = goToLibrary;
+      window.goToLibrary = function() {
+        if (S.digestMode) {
+          S.playing = false; clearTimeout(S.timer); updatePlayBtn();
+          if (typeof TTS !== 'undefined') TTS.stop();
+          S.digestMode = false; S.digestBlocks = []; S.digestBoundaries = null;
+          document.getElementById('blockIndicator').classList.add('hidden');
+          document.getElementById('blockLabel').classList.add('hidden');
+          document.getElementById('wordDisplay').className = 'word-display';
+          document.getElementById('readerView').classList.remove('digest-reading');
+          document.getElementById('readerView').classList.remove('active');
+          document.getElementById('libraryView').classList.add('active');
+          switchTab('digest'); renderDigestList();
+          document.title = 'RSVP Reader';
+        } else { _orig(); }
+      };
     }, 300);
   });
 })();

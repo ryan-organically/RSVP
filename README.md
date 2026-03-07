@@ -47,7 +47,15 @@ The app will be available at `http://localhost:3000`.
 
 ### Claude Code Integration
 
-The repo ships with Claude Code slash commands out of the box. After cloning, just open the project with [Claude Code](https://claude.com/claude-code) and use `/digest` or `/diff` — no extra setup needed.
+The repo ships with Claude Code slash commands out of the box. After cloning, just open the project with [Claude Code](https://claude.com/claude-code) and use `/digest` or `/diff` — no extra setup needed. No API keys required.
+
+**Platform support for `/digest` browser launch:**
+- **macOS** — uses `open`
+- **Windows (WSL)** — copies to `C:\` and launches via `powershell.exe`
+- **Windows (native)** — uses `start`
+- **Linux** — uses `xdg-open` (install a browser handler if missing)
+
+Digests are stored in your browser's localStorage and accumulate across sessions.
 
 See `CLAUDE.md` for project conventions and `.claude/skills/` for the skill definitions.
 
@@ -128,7 +136,7 @@ api/
   books/[id]/bookmarks.js
   proxy.js            # Gutenberg proxy
   digests.js          # Digest sessions
-claude-digest/        # Legacy CLI for digest generation
+claude-digest/        # Digest formatter + browser launcher CLI
 .claude/
   skills/digest/      # /digest slash command (session summary)
   skills/diff/        # /diff slash command (git diff digest)

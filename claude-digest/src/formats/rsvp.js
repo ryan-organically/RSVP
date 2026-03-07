@@ -6,8 +6,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Search paths for the RSVP reader HTML
 const READER_SEARCH_PATHS = [
-  join(__dirname, '..', '..', '..', 'rsvp-reader (2).html'),  // sibling to claude-digest/
-  join(__dirname, '..', '..', 'rsvp-reader (2).html'),         // inside claude-digest/
+  join(__dirname, '..', '..', '..', 'public', 'index.html'),   // RSVP/public/index.html
+  join(__dirname, '..', '..', '..', 'rsvp-reader (2).html'),   // legacy sibling
+  join(__dirname, '..', '..', 'rsvp-reader (2).html'),
   join(__dirname, '..', '..', 'rsvp-reader.html'),
 ];
 
@@ -37,21 +38,61 @@ export async function formatRSVP(digest, meta = {}) {
     blocks: digest.blocks,
   };
 
-  // Inject the digest session into DIGEST_SESSIONS and auto-open it
+  // Inject the digest session: persist to localStorage, auto-open, fix back button
   const autoOpenScript = `
 <script>
 // Injected by claude-digest CLI
 (function() {
   const _injectedDigest = ${JSON.stringify(session)};
 
-  // Wait for DIGEST_SESSIONS to exist, then prepend
+  // Persist to localStorage so it survives across app opens
+  try {
+    const stored = JSON.parse(localStorage.getItem('localDigests') || '[]');
+    if (!stored.some(s => s.id === _injectedDigest.id)) {
+      stored.unshift(_injectedDigest);
+      localStorage.setItem('localDigests', JSON.stringify(stored.slice(0, 50)));
+    }
+  } catch {}
+
+  // Wait for app to initialize, then inject and open
   const _waitForReady = setInterval(() => {
     if (typeof DIGEST_SESSIONS !== 'undefined' && typeof switchTab === 'function') {
       clearInterval(_waitForReady);
-      DIGEST_SESSIONS.unshift(_injectedDigest);
-      // Switch to digest tab and auto-open
+      if (!DIGEST_SESSIONS.some(s => s.id === _injectedDigest.id)) {
+        DIGEST_SESSIONS.unshift(_injectedDigest);
+      }
       switchTab('digest');
       setTimeout(() => openDigest(_injectedDigest.id), 100);
+    }
+  }, 50);
+
+  // Override back button: return to digest list instead of broken library
+  const _origGoToLibrary = null;
+  const _waitForLib = setInterval(() => {
+    if (typeof goToLibrary === 'function' && typeof renderDigestList === 'function') {
+      clearInterval(_waitForLib);
+      const _orig = goToLibrary;
+      window.goToLibrary = function() {
+        if (S.digestMode) {
+          // Return to digest tab instead of library
+          S.playing = false; clearTimeout(S.timer); updatePlayBtn();
+          if (typeof TTS !== 'undefined') TTS.stop();
+          S.digestMode = false;
+          S.digestBlocks = [];
+          S.digestBoundaries = null;
+          document.getElementById('blockIndicator').classList.add('hidden');
+          document.getElementById('blockLabel').classList.add('hidden');
+          document.getElementById('wordDisplay').className = 'word-display';
+          document.getElementById('readerView').classList.remove('digest-reading');
+          document.getElementById('readerView').classList.remove('active');
+          document.getElementById('libraryView').classList.add('active');
+          switchTab('digest');
+          renderDigestList();
+          document.title = 'RSVP Reader';
+        } else {
+          _orig();
+        }
+      };
     }
   }, 50);
 })();

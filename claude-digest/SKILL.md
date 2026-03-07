@@ -1,22 +1,33 @@
 ---
 name: digest
-description: Generate a Dev Digest summary of the current or most recent Claude Code session
-argument-hint: "[--format json|markdown|html] [--output path]"
+description: Generate a Dev Digest summary of the current Claude Code session and open in RSVP Reader
+argument-hint: "[--sync] [--format json|markdown|html] [--output path]"
 ---
 
-Generate a session digest by running the claude-digest CLI tool.
+**IMPORTANT:** Do NOT ask the user to confirm or select a session. Execute immediately with no preamble.
 
-Run the tool against the most recent session transcript:
+## Steps
 
-```bash
-node ./claude-digest/bin/claude-digest.js --latest $ARGUMENTS
+1. **Summarize this session** — Review the full conversation so far and produce a JSON digest object. Do this using your own reasoning, NOT by calling the Anthropic API.
+
+2. **Output valid JSON** with this exact structure:
+```json
+{"title": "Short 4-8 word title", "project": "project-name", "blocks": [{"tag": "done|critical|high|info|decision", "text": "One concise sentence per block"}]}
 ```
 
-The output is an RSVP Reader-compatible digest with tagged blocks:
-- **CRITICAL** (red): Bugs, breaking issues, security problems
-- **HIGH** (orange): Warnings, performance issues, concerns
-- **DONE** (green): Completed tasks, features, fixes
-- **INFO** (blue): Context, architecture notes, observations
-- **DECISION** (purple): Decisions made or needed
+Block rules:
+- Each block: ONE sentence, 15-30 words, specific file names/numbers/details
+- Tags: `critical` (bugs, security), `high` (warnings, perf), `done` (completed work), `info` (context, observations), `decision` (decisions made/needed)
+- Order: critical first, then high, done, info, decision
+- 8-20 blocks depending on session length
 
-Formats: `--format json` (default), `--format markdown`, `--format html`
+3. **Pipe the JSON into the CLI** to format and open in the RSVP Reader:
+
+```bash
+echo '<YOUR_JSON>' | node ./claude-digest/bin/claude-digest.js --inject --open
+```
+
+If `--format` or `--output` was specified in $ARGUMENTS, pass those instead of `--open`:
+```bash
+echo '<YOUR_JSON>' | node ./claude-digest/bin/claude-digest.js --inject $ARGUMENTS
+```
