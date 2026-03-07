@@ -45,6 +45,12 @@ vercel dev
 
 The app will be available at `http://localhost:3000`.
 
+### Claude Code Integration
+
+The repo ships with Claude Code slash commands out of the box. After cloning, just open the project with [Claude Code](https://claude.com/claude-code) and use `/digest` or `/diff` — no extra setup needed.
+
+See `CLAUDE.md` for project conventions and `.claude/skills/` for the skill definitions.
+
 > **Note:** `npm run dev` serves only the static frontend (no API). Use `vercel dev` to run the full stack locally.
 
 ### Deploy
@@ -123,6 +129,10 @@ api/
   proxy.js            # Gutenberg proxy
   digests.js          # Digest sessions
 claude-digest/        # Legacy CLI for digest generation
+.claude/
+  skills/digest/      # /digest slash command (session summary)
+  skills/diff/        # /diff slash command (git diff digest)
+CLAUDE.md             # Claude Code project instructions
 vercel.json           # Routing + cache headers
 ```
 
