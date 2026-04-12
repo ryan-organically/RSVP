@@ -2263,6 +2263,17 @@ async function loadTheVerdict() {
   return THE_VERDICT_TEXT;
 }
 
+let FIFTH_HEAD_TEXT = null;
+async function loadFifthHead() {
+  if (FIFTH_HEAD_TEXT) return FIFTH_HEAD_TEXT;
+  try {
+    const res = await fetch('/fifth-head-of-cerberus.txt');
+    if (!res.ok) return '';
+    FIFTH_HEAD_TEXT = await res.text();
+  } catch { FIFTH_HEAD_TEXT = ''; }
+  return FIFTH_HEAD_TEXT;
+}
+
 let NABRE_TEXT = null;
 async function loadNabre() {
   if (NABRE_TEXT) return NABRE_TEXT;
@@ -2377,6 +2388,23 @@ async function migrateFromLocalStorage() {
         renderLibrary();
         showToast('NABRE Bible added to library');
       } catch(e) { console.warn('NABRE seed error:', e); }
+    });
+  }
+
+  // Seed The Fifth Head of Cerberus if not already in library (background, non-blocking)
+  if (!S.library.some(b => b.id === 'book-fifth-head-cerberus')) {
+    loadFifthHead().then(async fhText => {
+      if (!fhText) return;
+      try {
+        const fhId = 'book-fifth-head-cerberus';
+        const words = await tokenizeAsync(fhText);
+        const fhMeta = {id: fhId, title: 'The Fifth Head of Cerberus — Gene Wolfe', wordCount: words.length, source: 'bundled', addedAt: new Date().toISOString(), wordIndex: 0};
+        S.textCache[fhId] = fhText;
+        S.library.unshift(fhMeta);
+        await saveBook(fhId, fhMeta.title, words.length, 'bundled', fhText);
+        renderLibrary();
+        showToast('The Fifth Head of Cerberus added to library');
+      } catch(e) { console.warn('Fifth Head seed error:', e); }
     });
   }
   renderLibrary();
