@@ -2,7 +2,7 @@
 
 Speed read anything. One word at a time, with ORP (Optimal Recognition Point) highlighting.
 
-No build step. No framework. One HTML file, a few serverless functions, and a SQLite database.
+**Local-first and private.** Your library, reading positions, bookmarks, and notes live entirely in your own browser. Nothing is uploaded to any server, and the app runs with zero credentials. One HTML file plus a single stateless proxy function.
 
 **Demo:** [rsvp-reader-ecru.vercel.app](https://rsvp-reader-ecru.vercel.app)
 
@@ -11,55 +11,41 @@ No build step. No framework. One HTML file, a few serverless functions, and a SQ
 ## Features
 
 - **RSVP speed reading** with ORP highlighting and adjustable WPM (50–1200)
-- **Library management** — upload `.txt`, `.docx`, `.pdf` or paste text directly
-- **Reading position sync** — pick up where you left off across devices
-- **Bookmarks** and **chapter detection** (TOC sidebar + minimap)
-- **Free Library** — search and download 60,000+ Project Gutenberg books
+- **First-run onboarding + WPM calibration** so new readers find their pace fast
+- **Command palette** (`Cmd`/`Ctrl` + `K`) for everything: open a book, jump to a chapter, change settings, search
+- **Reading stats + streaks**, daily goals, and per-book time estimates (all local)
+- **Bionic reading** and a **comfort font** mode, plus **multi-word chunking** (1/2/3 words per flash)
+- **Smart pause** at paragraphs, **peek** (`P`) to re-read the current sentence, and a 3-2-1 **resume countdown**
+- **Highlights** (`H`) and **bookmarks** (`B`) with one-tap jump and Markdown export
+- **Library management** — upload `.txt`/`.md`/`.pdf`, drag-and-drop, or paste text (pasted web HTML is cleaned automatically)
+- **Free Library** — search and download 60,000+ public-domain Project Gutenberg books
 - **Dev Digest** — speed-read color-coded summaries of coding sessions
-- **Offline support** via ServiceWorker
-- **Dark/light theme** with customizable accent colors
-- **Keyboard-driven** — Space, arrows, `[`/`]` font size, Home/End jump
+- **Installable PWA** with offline reading of any book you have opened
+- **Dark/light theme**, custom accent colors, and named presets
+- **Accessible**: keyboard-first, focus rings, ARIA labels, reduced-motion aware, pinch-zoom enabled
+
+## How your data is stored
+
+Everything is on-device. There are no accounts and no shared database.
+
+| Data | Where |
+|------|-------|
+| Book text | IndexedDB (`rsvp-cache`) |
+| Library, positions, bookmarks, highlights, digests, settings, stats | `localStorage` (`rsvp:*` keys) |
+
+The only network calls are: the Google Fonts and pdf.js CDNs, the Project Gutenberg search API (`gutendex.com`), and the bundled `/api/proxy` function, which downloads Gutenberg book text. The proxy is stateless, allowlisted to `gutenberg.org`, and never touches a database or the filesystem.
 
 ## Setup
 
-### Prerequisites
-
-- Node.js 18+
-- A [Turso](https://turso.tech) database (free tier works)
-- A [Vercel](https://vercel.com) account (for deployment)
-
-### Local Development
+No database, no environment variables, no accounts.
 
 ```bash
 git clone https://github.com/ryan-organically/RSVP.git
 cd RSVP
-npm install
-
-# Create .env.local with your Turso credentials
-echo 'TURSO_URL=libsql://your-db.turso.io' >> .env.local
-echo 'TURSO_AUTH_TOKEN=your-token' >> .env.local
-
-# Start the dev server (serves frontend + API functions)
-vercel dev
+npm run dev          # static dev server on http://localhost:3000
 ```
 
-The app will be available at `http://localhost:3000`.
-
-### Claude Code Integration
-
-The repo ships with Claude Code slash commands out of the box. After cloning, just open the project with [Claude Code](https://claude.com/claude-code) and use `/digest` or `/diff` — no extra setup needed. No API keys required.
-
-**Platform support for `/digest` browser launch:**
-- **macOS** — uses `open`
-- **Windows (WSL)** — copies to `C:\` and launches via `powershell.exe`
-- **Windows (native)** — uses `start`
-- **Linux** — uses `xdg-open` (install a browser handler if missing)
-
-Digests are stored in your browser's localStorage and accumulate across sessions.
-
-See `CLAUDE.md` for project conventions and `.claude/skills/` for the skill definitions.
-
-> **Note:** `npm run dev` serves only the static frontend (no API). Use `vercel dev` to run the full stack locally.
+`npm run dev` is enough for the full app locally except downloading Gutenberg books, which needs the proxy. To run the proxy too, use `vercel dev` (no env vars required).
 
 ### Deploy
 
@@ -67,7 +53,11 @@ See `CLAUDE.md` for project conventions and `.claude/skills/` for the skill defi
 vercel --prod
 ```
 
-Set `TURSO_URL` and `TURSO_AUTH_TOKEN` in your Vercel project environment variables. The database schema auto-creates on first request.
+No environment variables are required. Any static host works; on Vercel the single `/api/proxy` function powers Gutenberg downloads.
+
+### Claude Code Integration
+
+The repo ships with Claude Code slash commands. Open the project with [Claude Code](https://claude.com/claude-code) and use `/digest` or `/diff`. Digests are stored in your browser's `localStorage` and accumulate across sessions. See `CLAUDE.md` and `.claude/skills/` for details.
 
 ---
 
@@ -76,27 +66,13 @@ Set `TURSO_URL` and `TURSO_AUTH_TOKEN` in your Vercel project environment variab
 | Layer | Tech |
 |-------|------|
 | Frontend | Vanilla HTML/CSS/JS — single file (`public/index.html`) |
-| Backend | Vercel serverless functions (`api/`) |
-| Database | [Turso](https://turso.tech) (LibSQL/SQLite) |
-| Hosting | Vercel |
-
-## API
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/books` | GET | List saved books |
-| `/api/books` | POST | Add a book |
-| `/api/books/[id]` | GET/DELETE | Book metadata / delete |
-| `/api/books/[id]/text` | GET | Book text content (gzip) |
-| `/api/books/[id]/position` | GET/PUT | Reading position |
-| `/api/books/[id]/bookmarks` | GET/POST/DELETE | Bookmarks |
-| `/api/digests` | GET/POST | Dev digest sessions |
+| Storage | IndexedDB + localStorage (local-first, in-browser) |
+| Server | One stateless function: `api/proxy.js` (Gutenberg CORS proxy) |
+| Hosting | Vercel (or any static host) |
 
 ## Dev Digest
 
-The RSVP Reader doubles as a Dev Digest viewer — color-coded summaries of coding sessions or git diffs, speed-readable at 300–600 WPM.
-
-Works with [Claude Code](https://claude.com/claude-code) slash commands:
+The reader doubles as a Dev Digest viewer — color-coded summaries of coding sessions or git diffs, speed-readable at 300–600 WPM. Digests are created by pasting notes (first line is the title, paragraphs become blocks) or via Claude Code:
 
 | Command | What it does |
 |---------|-------------|
@@ -104,14 +80,14 @@ Works with [Claude Code](https://claude.com/claude-code) slash commands:
 | `/diff` | Digest working tree changes |
 | `/diff main` | Digest current branch vs main |
 
-See [DIGEST_WORKFLOW.md](DIGEST_WORKFLOW.md) for the full system.
+See [DIGEST_WORKFLOW.md](DIGEST_WORKFLOW.md). Digests live only in your browser's `localStorage`.
 
 ### Tag System
 
 | Tag | Color | Use |
 |-----|-------|-----|
 | `critical` | Red | Bugs, breaking changes, security issues |
-| `high` | Orange | Warnings, regressions, things to watch |
+| `high` | Amber | Warnings, regressions, things to watch |
 | `done` | Green | Completed work, shipped features |
 | `info` | Blue | Architecture context, observations |
 | `decision` | Purple | Decisions made or still needed |
@@ -124,24 +100,13 @@ See [DIGEST_WORKFLOW.md](DIGEST_WORKFLOW.md) for the full system.
 public/
   index.html          # Entire frontend (CSS + JS inline)
   sw.js               # ServiceWorker for offline caching
-  generative-energy.txt  # Bundled book
-  the-verdict.txt     # Bundled book
-  nabre.txt           # Bundled NABRE Bible text
+  welcome.txt         # Public-domain welcome / tutorial read
+  manifest.webmanifest# PWA manifest
 api/
-  db.js               # Turso client + schema migration
-  books.js            # Library CRUD
-  books/[id].js       # Single book operations
-  books/[id]/text.js  # Raw text endpoint
-  books/[id]/position.js
-  books/[id]/bookmarks.js
-  proxy.js            # Gutenberg proxy
-  digests.js          # Digest sessions
+  proxy.js            # Stateless, allowlisted Gutenberg CORS proxy (no DB, no FS)
 claude-digest/        # Digest formatter + browser launcher CLI
-.claude/
-  skills/digest/      # /digest slash command (session summary)
-  skills/diff/        # /diff slash command (git diff digest)
-CLAUDE.md             # Claude Code project instructions
-vercel.json           # Routing + cache headers
+.claude/skills/       # /digest and /diff slash commands
+vercel.json           # Cache headers
 ```
 
 ## Contributing
@@ -149,9 +114,9 @@ vercel.json           # Routing + cache headers
 1. Fork the repo
 2. Create a feature branch (`git checkout -b my-feature`)
 3. Make your changes
-4. Test locally with `vercel dev`
+4. Test locally with `npm run dev`
 5. Open a PR
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

@@ -1,12 +1,11 @@
 {
   "name": "rsvp-reader",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
+  "description": "Local-first speed-reading (RSVP) web app. No accounts, no servers, no data leaves your browser.",
+  "license": "MIT",
   "scripts": {
     "dev": "npx serve public -p 3000",
     "build": "echo 'static site'"
-  },
-  "dependencies": {
-    "@libsql/client": "^0.17.0"
   }
 }
