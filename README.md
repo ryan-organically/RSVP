@@ -4,7 +4,7 @@ Speed read anything. One word at a time, with ORP (Optimal Recognition Point) hi
 
 **Local-first and private.** Your library, reading positions, bookmarks, and notes live entirely in your own browser. Nothing is uploaded to any server, and the app runs with zero credentials. One HTML file plus a single stateless proxy function.
 
-**Demo:** [rsvp-reader-ecru.vercel.app](https://rsvp-reader-ecru.vercel.app)
+**Demo:** [focal.wiki](https://focal.wiki)
 
 ---
 
