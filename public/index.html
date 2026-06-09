@@ -6,14 +6,50 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RSVP Reader</title>
+<title>Focal: Speed Reader Built on RSVP</title>
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="canonical" href="https://focal.wiki/">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
-<meta name="description" content="Speed read anything. One word at a time, as fast as your brain can handle. Local-first and private.">
-<meta property="og:title" content="RSVP Reader">
-<meta property="og:description" content="Speed read anything. One word at a time, as fast as your brain can handle.">
+<meta name="description" content="Focal is a free, open-source speed reader built on RSVP (Rapid Serial Visual Presentation). Read books and PDFs one word at a time. Local-first and private.">
+<meta property="og:title" content="Focal: Speed Reader Built on RSVP">
+<meta property="og:description" content="A free, open-source speed reader built on RSVP. Read one word at a time, fully local-first and private.">
 <meta property="og:type" content="website">
-<meta name="twitter:card" content="summary">
+<meta property="og:url" content="https://focal.wiki/">
+<meta property="og:image" content="https://focal.wiki/og-image.png">
+<meta property="og:site_name" content="Focal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Focal: Speed Reader Built on RSVP">
+<meta name="twitter:description" content="A free, open-source speed reader built on RSVP. One word at a time, local-first and private.">
+<meta name="twitter:image" content="https://focal.wiki/og-image.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Focal",
+  "alternateName": "Focal Speed Reader",
+  "url": "https://focal.wiki/",
+  "description": "Focal is a free, open-source speed reader built on RSVP (Rapid Serial Visual Presentation). It streams text one word at a time so your eyes stop moving and you read faster. Local-first and private, with no accounts and nothing leaving your browser.",
+  "applicationCategory": "Productivity",
+  "applicationSubCategory": "Speed Reader",
+  "operatingSystem": "Any (web browser)",
+  "browserRequirements": "Requires JavaScript. Works in any modern browser.",
+  "softwareVersion": "1.0",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "license": "https://github.com/ryan-organically/RSVP/blob/main/LICENSE",
+  "featureList": [
+    "RSVP (Rapid Serial Visual Presentation) reading",
+    "Read books, PDFs, and pasted articles",
+    "Project Gutenberg free library (60,000+ public-domain books)",
+    "Local-first storage, nothing leaves your browser",
+    "Offline-capable Progressive Web App",
+    "Adjustable words-per-minute pacing",
+    "Bookmarks, highlights, and reading stats"
+  ],
+  "keywords": "speed reader, RSVP, rapid serial visual presentation, speed reading app, read faster, open source",
+  "author": { "@type": "Person", "name": "Ryan" }
+}
+</script>
 <meta name="theme-color" content="#111317" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfc" media="(prefers-color-scheme: light)">
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
@@ -22,7 +58,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
 <style>
 /* ============================================================
-   RSVP Reader — "Quietype" design system
+   Focal, "Quietype" design system
    Calm, border-led, dark-first with a real light mode.
    ============================================================ */
 :root {
@@ -227,8 +263,8 @@ input[type=checkbox],input[type=color]{accent-color:var(--accent)}
 .chip:hover{background:var(--surface-2);border-color:var(--border-strong);color:var(--text)}
 .chip .ring{display:inline-block;width:16px;height:16px}
 .lib-header{max-width:920px;margin-inline:auto;width:100%;padding:var(--s-8) var(--s-8) 0}
-.lib-header h1{font-size:var(--t-xl);font-weight:var(--w-semi);letter-spacing:var(--ls-tight);line-height:var(--lh-tight);margin-bottom:6px}
-.lib-header h1 span{color:var(--accent)}
+.lib-header h2{font-size:var(--t-xl);font-weight:var(--w-semi);letter-spacing:var(--ls-tight);line-height:var(--lh-tight);margin-bottom:6px}
+.lib-header h2 span{color:var(--accent)}
 .lib-header p{color:var(--text-dim);font-size:var(--t-base);line-height:var(--lh-body);max-width:52ch;margin-bottom:var(--s-8)}
 .lib-header .tabs{margin-top:0}
 .lib-body{max-width:920px;margin-inline:auto;width:100%;padding:var(--s-6) var(--s-8) var(--s-20);flex:1}
@@ -338,7 +374,6 @@ details.paste-block[open]>summary::before{content:"–"}
 .word-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   position:relative;padding:var(--s-10) var(--s-6) 110px;cursor:pointer;user-select:none;overflow:hidden;contain:layout style}
 .orp-guide{position:absolute;left:50%;width:1px;height:14px;background:var(--border-strong);transform:translateX(-50%);pointer-events:none}
-.orp-guide.top{top:calc(50% - 0.95em - 18px)}
 .orp-guide.bot{top:calc(50% + 0.95em + 4px)}
 .word-display{font-family:var(--word-font);font-size:var(--word);font-weight:var(--w-normal);letter-spacing:var(--ls-tight);
   line-height:1.2;min-height:1.2em;white-space:nowrap;text-align:center;color:var(--text);
@@ -346,6 +381,7 @@ details.paste-block[open]>summary::before{content:"–"}
 .word-display .orp{color:var(--orp-color,var(--accent));font-weight:var(--w-medium)}
 .word-display.comfort{font-family:"Atkinson Hyperlegible","Inter",system-ui,sans-serif;letter-spacing:.01em;font-weight:var(--w-medium)}
 .word-display .bio{font-weight:var(--w-bold)}
+.word-display.bionic .orp{font-weight:var(--w-bold)}
 .word-display .count{color:var(--accent);font-weight:var(--w-semi)}
 #keyhint{position:absolute;bottom:120px;left:0;right:0;text-align:center;font-size:var(--t-xs);color:var(--text-faint);
   line-height:1.9;pointer-events:none;opacity:.55;transition:opacity var(--dur-2) var(--ease)}
@@ -428,7 +464,7 @@ details.paste-block[open]>summary::before{content:"–"}
 .btn-bookmark:hover{border-color:var(--accent-line);color:var(--accent)}
 .toc-empty{padding:var(--s-4);font-size:var(--t-xs);color:var(--text-faint);text-align:center}
 
-/* Minimap — VS Code style right rail, wide screens only */
+/* Minimap: VS Code style right rail, wide screens only */
 .minimap{display:none}
 @media (min-width:1100px){
   .minimap{display:block;width:120px;flex-shrink:0;border-left:var(--bw) solid var(--border);position:relative;cursor:pointer;overflow:hidden;background:var(--bg)}
@@ -511,7 +547,7 @@ details.paste-block[open]>summary::before{content:"–"}
   :root{--word:clamp(2.25rem,11vw,3rem)}
   .util-row{padding:0 var(--s-5);height:52px}
   .lib-header{padding:var(--s-6) var(--s-5) 0}
-  .lib-header h1{font-size:var(--t-lg)}
+  .lib-header h2{font-size:var(--t-lg)}
   .lib-header p{margin-bottom:var(--s-5)}
   .lib-body{padding:var(--s-5) var(--s-5) var(--s-20)}
   .featured-grid{grid-template-columns:1fr}
@@ -1003,7 +1039,7 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
 <!-- ════════ LIBRARY VIEW ════════ -->
 <div id="libraryView" class="view active">
   <div class="util-row">
-    <span class="brand"><span class="dia">◆</span> RSVP</span>
+    <span class="brand"><span class="dia">◆</span> Focal</span>
     <span class="util-spacer"></span>
     <button class="chip hide-sm" id="statsChip" onclick="openStats()" aria-label="Reading stats" style="display:none"></button>
     <button class="chip" onclick="openCmdk()" aria-label="Command palette"><span aria-hidden="true">⌘</span>K</button>
@@ -1022,7 +1058,7 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
   </div>
 
 <!-- ===== LANDING HERO (additive, self-contained) ===== -->
-<section class="lp-hero" id="lp-hero" aria-label="RSVP Reader overview">
+<section class="lp-hero" id="lp-hero" aria-label="Focal overview">
   <!-- dither / noise + radial glow backdrop -->
   <div class="lp-hero-bg" aria-hidden="true">
     <div class="lp-halo lp-halo-a"></div>
@@ -1044,9 +1080,10 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
       </h1>
 
       <p class="lp-sub">
-        RSVP streams one word at a time and pins your eye to the optimal
-        recognition point, so you stop subvocalizing and start flying.
-        Books, PDFs, pasted articles, even your dev sessions.
+        Focal is a speed reader built on RSVP (Rapid Serial Visual Presentation).
+        It streams one word at a time and pins your eye to the optimal recognition
+        point, so you stop subvocalizing and start flying. Books, PDFs, pasted
+        articles, even your dev sessions.
       </p>
 
       <div class="lp-cta-row">
@@ -1108,7 +1145,7 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
 <!-- ===== /LANDING HERO ===== -->
 
   <div class="lib-header" id="library">
-    <h1>Your <span>library</span></h1>
+    <h2>Your <span>library</span></h2>
     <div class="tabs" role="tablist">
       <button class="tab active" id="tabMyBooks" role="tab" aria-selected="true" onclick="switchTab('mybooks')">My Books</button>
       <button class="tab" id="tabFree" role="tab" aria-selected="false" onclick="switchTab('free')">Free Library</button>
@@ -1307,10 +1344,10 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
   <div class="lp-footer-top">
     <div>
       <div class="lp-footer-brand">
-        <span class="lp-footer-mark">R</span> RSVP Reader
+        <span class="lp-footer-mark">F</span> Focal
       </div>
       <p style="margin-top:var(--s-3);font-size:var(--t-sm);color:var(--text-dim);max-width:34ch;line-height:var(--lh-body)">
-        A calm, fast, local-first speed reader. Built for people with too much to read.
+        Focal is a calm, fast, local-first speed reader built on RSVP, for people with too much to read.
       </p>
     </div>
     <div class="lp-footer-cols">
@@ -1369,7 +1406,6 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
 
     <div class="reader-main">
       <div class="word-area" id="wordArea">
-        <div class="orp-guide top" aria-hidden="true"></div>
         <div class="orp-guide bot" aria-hidden="true"></div>
         <div class="block-indicator hidden" id="blockIndicator"></div>
         <div class="word-display" id="wordDisplay"></div>
@@ -1460,7 +1496,7 @@ const S = {
   smartResume: true, lastBook: null, preset: '',
   sessionWordsRead: 0, sessionStartTime: null,
   digestMode: false, digestBlocks: [], digestBoundaries: null,
-  paraStarts: null, _openAccordions: new Set(), _countdown: null,
+  paraStarts: null, chapterStarts: null, _openAccordions: new Set(), _countdown: null,
 };
 const el = id => document.getElementById(id);
 
@@ -1704,12 +1740,24 @@ function computeParaStarts(text) {
 }
 function calcORP(word) {
   const len = word.replace(/[^a-zA-Z0-9]/g, '').length;
-  if (len <= 1) return 0; if (len <= 5) return 1; if (len <= 9) return 2; if (len <= 13) return 3; return 4;
+  if (len <= 1) return 0;
+  return Math.floor((len - 1) / 2); // exact center character of the word (left-of-center on even lengths)
+}
+function countSyllables(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (!w) return 1;
+  const groups = w.match(/[aeiouy]+/g);
+  let n = groups ? groups.length : 1;
+  if (w.length > 2 && w.charAt(w.length - 1) === 'e' && n > 1) n--; // drop a typically-silent trailing 'e'
+  return Math.max(1, n);
 }
 function wordDelay(word, baseMs) {
   let m = 1; const core = word.replace(/["'’”)\]\}]+$/, ''); const last = core[core.length - 1];
   if (PUNCT[last]) m = PUNCT[last];
   if (word.length > 8) m = Math.max(m, 1.3);
+  // Longer (more-syllable) words get a slightly longer flash so they register.
+  const syl = countSyllables(core);
+  if (syl >= 3) m = Math.max(m, 1 + Math.min(syl - 2, 4) * 0.09);
   return baseMs * m;
 }
 function detectChapters(text) {
@@ -1757,7 +1805,7 @@ function renderFrame() {
   if (!_wordEl) cacheWordArea();
   const el2 = _wordEl; if (!el2) return;
   el2.style.fontSize = S.fontSize + 'px';
-  el2.className = 'word-display' + (S.comfort ? ' comfort' : '');
+  el2.className = 'word-display' + (S.comfort ? ' comfort' : '') + (S.bionic ? ' bionic' : '');
   el2.style.whiteSpace = '';
   if (!S.digestMode) el2.style.removeProperty('--orp-color');
   const idx = S.wordIndex, words = S.words;
@@ -1798,7 +1846,7 @@ function updateProgress() {
     info = S.wordIndex.toLocaleString() + ' / ' + len.toLocaleString() + ' · ~' + left + 'm';
   }
   if (info !== _lastProgress) { if (!_wordCountEl) _wordCountEl = el('wordCount'); if (_wordCountEl) _wordCountEl.textContent = info; _lastProgress = info; }
-  if (S.currentBook) document.title = (len > 0 ? Math.round(pct * 100) : 0) + '% · ' + S.currentBook.title + ' · RSVP';
+  if (S.currentBook) document.title = (len > 0 ? Math.round(pct * 100) : 0) + '% · ' + S.currentBook.title + ' · Focal';
   if (_minimapDrawn) updateMinimapViewport();
 }
 function updatePlayBtn() {
@@ -2045,9 +2093,10 @@ async function openBook(id) {
     S.words = await tokenizeAsync(body);
     if (!S.words.length) { hideLoading(); showToast('This file has no readable text.', 'err'); return; }
     S.chapters = detectChapters(body);
+    S.chapterStarts = new Set(S.chapters.map(c => c.index).filter(i => i > 0));
     S.paraStarts = computeParaStarts(body);
     S.digestMode = false; S.digestBoundaries = null; S.digestBlocks = [];
-    el('wordDisplay').className = 'word-display' + (S.comfort ? ' comfort' : '');
+    el('wordDisplay').className = 'word-display' + (S.comfort ? ' comfort' : '') + (S.bionic ? ' bionic' : '');
     el('blockIndicator').classList.add('hidden'); el('blockLabel').classList.add('hidden');
     S.currentBook = meta; S.lastBook = id;
     updateLibraryEntry(id, { lastOpened: new Date().toISOString() });
@@ -2177,7 +2226,7 @@ function exportHighlights() {
   if (!S.currentBook) return;
   const hls = getHighlights(S.currentBook.id);
   if (!hls.length) { showToast('No highlights to export'); return; }
-  const md = '# ' + S.currentBook.title + ' — Highlights\n\n' + hls.map(h => '- ' + h.text).join('\n\n') + '\n';
+  const md = '# ' + S.currentBook.title + ' Highlights\n\n' + hls.map(h => '- ' + h.text).join('\n\n') + '\n';
   downloadBlob(md, (S.currentBook.title || 'highlights').replace(/[^a-z0-9]+/gi,'-').toLowerCase() + '-highlights.md', 'text/markdown');
 }
 // ── Playback ───────────────────────────────────────────────
@@ -2216,6 +2265,7 @@ function scheduleTick() {
   // Window check so chunk>1 doesn't step over a boundary without pausing
   let boundary = false;
   for (let i = S.wordIndex + 1; i <= nextIdx; i++) {
+    if (S.chapterStarts && S.chapterStarts.has(i)) { delay += 1200; boundary = true; break; } // longest pause: new chapter
     if (S.smartPause && S.paraStarts && S.paraStarts.has(i)) { delay += 500; boundary = true; break; }
   }
   if (!boundary && S.digestMode && S.digestBoundaries) {
@@ -2331,12 +2381,12 @@ function goToLibrary() {
   S.currentBook = null; S.lastBook = null; saveSettings();
   S.digestMode = false; S.digestBlocks = []; S.digestBoundaries = null;
   el('blockIndicator').classList.add('hidden'); el('blockLabel').classList.add('hidden');
-  el('wordDisplay').className = 'word-display' + (S.comfort ? ' comfort' : '');
+  el('wordDisplay').className = 'word-display' + (S.comfort ? ' comfort' : '') + (S.bionic ? ' bionic' : '');
   _minimapDrawn = false;
   el('readerView').classList.remove('active', 'is-playing');
   el('libraryView').classList.add('active');
   renderLibrary(); updateStatsChip();
-  document.title = 'RSVP Reader';
+  document.title = 'Focal: Speed Reader Built on RSVP';
   try { history.replaceState(null, '', location.pathname); } catch {}
 }
 // ── Gutenberg ──────────────────────────────────────────────
@@ -2513,7 +2563,7 @@ async function importFile(file) {
     else text = await file.text();
     if (text.trim().length < 10) { hideLoading(); showToast('Could not extract readable text.', 'err'); return; }
     const meta = await importBook(name, text, { source: 'import' });
-    if (meta.wordCount > 400000) showToast(meta.wordCount.toLocaleString() + ' words — long text, may be slow on mobile.');
+    if (meta.wordCount > 400000) showToast(meta.wordCount.toLocaleString() + ' words. Long text may be slow on mobile.');
     renderLibrary(); await openBook(meta.id);
   } catch (e) { hideLoading(); showToast('Failed: ' + e.message, 'err', 4000); }
 }
@@ -2749,7 +2799,7 @@ function openStats() {
     '<div class="stat-card"><div class="sv tnum">' + streak + ' 🔥</div><div class="sl">Day streak</div></div>' +
     '<div class="stat-card"><div class="sv tnum">' + longest + '</div><div class="sl">Longest streak</div></div>' +
     '<div class="stat-card"><div class="sv tnum">' + fmtWords(totalW) + '</div><div class="sl">Words read</div></div>' +
-    '<div class="stat-card"><div class="sv tnum">' + (avg || '—') + '</div><div class="sl">Avg WPM</div></div>' +
+    '<div class="stat-card"><div class="sv tnum">' + (avg || '–') + '</div><div class="sl">Avg WPM</div></div>' +
     '</div><div class="sec-label">Last 7 days · ' + totalMin + ' min total</div>' + spark + goalHtml +
     '<div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Done</button></div>');
   const save = () => { const t = el('goalType').value, a = Math.max(1, parseInt(el('goalAmt').value) || 1); S.dailyGoal = { type: t, amount: a }; saveSettings(); showToast('Daily goal set', 'ok'); closeModal(); };
@@ -2864,7 +2914,7 @@ function openDigest(id) {
   S.digestMode = true; S.digestBlocks = s.blocks; S.currentBook = { id, title: s.title };
   const words = [], bounds = [];
   s.blocks.forEach((b, bi) => { bounds.push({ wordIndex: words.length, tag: b.tag, blockIdx: bi, text: b.text }); tokenize(b.text).forEach(w => words.push(w)); });
-  S.words = words; S.digestBoundaries = bounds; S.wordIndex = 0; S.playing = false; S.paraStarts = null;
+  S.words = words; S.digestBoundaries = bounds; S.wordIndex = 0; S.playing = false; S.paraStarts = null; S.chapterStarts = null;
   S.chapters = bounds.map(b => ({ title: ((TAG_COLORS[b.tag] || TAG_COLORS.info).label) + ': ' + b.text.slice(0, 46), index: b.wordIndex }));
   S.sessionWordsRead = 0; S.sessionStartTime = null;
   el('libraryView').classList.remove('active'); el('readerView').classList.add('active');
@@ -2891,13 +2941,13 @@ function exportDigest(id) {
   const s = DIGEST_SESSIONS.find(x => x.id === id); if (!s) return;
   const d = JSON.stringify(s.blocks).replace(/</g, '\\u003c').replace(/-->/g, '--\\u003e').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   const t = esc(s.title);
-  const html = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + t + ' — RSVP</title>' +
+  const html = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + t + ' · Focal</title>' +
 '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#111317;color:#ecedef;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}.bar{padding:12px 16px;display:flex;justify-content:space-between;border-bottom:1px solid #2a2e36;font-size:13px}.bar .t{font-weight:600;opacity:.8}.wa{flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;padding:40px}.w{font-family:Georgia,serif;font-size:64px;white-space:nowrap}.w .o{color:#22d3ee;font-weight:700}.lb{position:absolute;bottom:24px;left:16px;right:16px;text-align:center;font-size:12px;color:#7b8090;font-style:italic}.s{padding:14px;display:flex;gap:12px;align-items:center;justify-content:center;border-top:1px solid #2a2e36}.s button{background:#1e2127;border:1px solid #383d47;color:#ecedef;border-radius:6px;padding:8px 16px;cursor:pointer}.inf{font-size:11px;color:#7b8090;text-align:center;padding:6px}</style></head><body>' +
 '<div class="bar"><span class="t">' + t + '</span><span id="ti"></span></div><div class="wa" id="wa"><div class="w" id="w"></div><div class="lb" id="lb"></div></div><div class="inf" id="inf"></div>' +
 '<div class="s"><button onclick="sk(-10)">◁</button><button id="pb" onclick="tg()">▶</button><button onclick="sk(10)">▷</button><input type="range" min="50" max="1200" step="10" value="300" oninput="wpm=+this.value"></div>' +
 '<script>var blocks=' + d + ';var TL={critical:"CRITICAL",high:"HIGH",done:"DONE",info:"INFO",decision:"DECIDE"};var words=[],bd=[];blocks.forEach(function(b,i){bd.push({wi:words.length,tag:b.tag,i:i,text:b.text});(b.text.split(/\\s+/).filter(function(w){return w&&/[a-zA-Z0-9]/.test(w)})).forEach(function(w){words.push(w)})});var idx=0,playing=false,wpm=300,timer=null;function orp(w){var c=w.replace(/[^a-zA-Z0-9]/g,"").length;if(c<=1)return 0;if(c<=5)return 1;if(c<=9)return 2;if(c<=13)return 3;return 4}function rn(){var w=words[idx]||"";var o=orp(w),cc=0,b="",m="",a="";for(var i=0;i<w.length;i++){var ch=w[i],A=/[a-zA-Z0-9]/.test(ch);if(A){if(cc<o)b+=ch;else if(cc===o)m+=ch;else a+=ch;cc++}else{if(cc<=o)b+=ch;else a+=ch}}document.getElementById("w").innerHTML=b+"<span class=o>"+m+"</span>"+a;var cur=bd[0];for(var j=0;j<bd.length;j++){if(idx>=bd[j].wi)cur=bd[j];else break}document.getElementById("ti").textContent=TL[cur.tag]+" "+(cur.i+1)+"/"+blocks.length;document.getElementById("lb").textContent=cur.text.length>90?cur.text.slice(0,90)+"…":cur.text;var left=Math.ceil((words.length-idx)/(wpm/60));document.getElementById("inf").textContent=idx+" / "+words.length+" · "+(left>60?Math.ceil(left/60)+"m":left+"s")}function tk(){if(!playing||idx>=words.length-1){playing=false;document.getElementById("pb").textContent="▶";return}var w=words[idx]||"",d=60000/wpm;if(/[.!?]$/.test(w))d*=2.2;else if(/[,;:]$/.test(w))d*=1.4;var ni=idx+1;if(bd.some(function(b){return b.wi===ni}))d+=900;timer=setTimeout(function(){idx=Math.min(idx+1,words.length-1);rn();tk()},d)}function tg(){playing=!playing;document.getElementById("pb").textContent=playing?"❚❚":"▶";if(playing)tk();else clearTimeout(timer)}function sk(n){idx=Math.max(0,Math.min(idx+n,words.length-1));rn()}document.getElementById("wa").onclick=tg;document.addEventListener("keydown",function(e){if(e.code==="Space"){e.preventDefault();tg()}if(e.code==="ArrowRight")sk(10);if(e.code==="ArrowLeft")sk(-10)});rn();<\/script></body></html>';
   downloadBlob(html, (s.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'digest') + '-rsvp.html', 'text/html');
-  showToast('Exported standalone RSVP file', 'ok');
+  showToast('Exported standalone Focal file', 'ok');
 }
 
 // ── Welcome read ───────────────────────────────────────────
@@ -2908,7 +2958,7 @@ async function ensureWelcome() {
   try {
     const res = await fetch('/welcome.txt'); if (!res.ok) return null;
     const text = await res.text(); if (!text.trim()) return null;
-    const meta = await importBook('Welcome to RSVP Reader', text, { source: 'welcome', author: 'RSVP', tag: 'notes' });
+    const meta = await importBook('Welcome to Focal', text, { source: 'welcome', author: 'Focal', tag: 'notes' });
     S.welcomeSeeded = true; saveSettings();
     return meta;
   } catch { return null; }

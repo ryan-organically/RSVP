@@ -1,4 +1,4 @@
-const CACHE = 'rsvp-v4';
+const CACHE = 'focal-v5';
 const PRECACHE = ['/', '/index.html', '/welcome.txt', '/manifest.webmanifest'];
 
 self.addEventListener('install', e => {
