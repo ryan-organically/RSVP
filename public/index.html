@@ -2380,19 +2380,21 @@ async function searchGutenbergOPDS(query) {
 async function fetchBookText(url) {
   let res;
   try { res = await proxyFetch(url); }
-  catch { throw new Error('Network error reaching the download proxy.'); }
+  catch (e) { console.warn('[gutenberg] network error', e); throw new Error("Couldn't reach Project Gutenberg. Check your connection and try again."); }
   if (!res.ok) {
-    // Distinguish a real upstream miss (our proxy relays JSON {error}) from the
-    // /api/proxy function being absent entirely (a bare static 404, no JSON body).
+    // Keep the technical reason in the console; show the reader a plain-English line.
     const body = await res.text().catch(() => '');
     let j = null; try { j = JSON.parse(body); } catch {}
-    if (j && j.error) throw new Error(res.status === 404 ? 'No plain-text edition is available for this book.' : j.error);
-    if (res.status === 404) throw new Error('Book downloads need the /api/proxy function. Run "vercel dev" locally, or use the deployed app.');
-    throw new Error('Proxy error ' + res.status);
+    console.warn('[gutenberg] download failed', res.status, (j && j.error) || body.slice(0, 200));
+    // A JSON {error} body means our proxy ran and relayed an upstream miss; a bare
+    // 404 with no JSON body means the /api/proxy function itself is absent (local dev).
+    if (res.status === 404) throw new Error(j && j.error ? 'This book has no plain-text edition to read.' : 'Book downloads are unavailable right now.');
+    if (res.status === 413) throw new Error('This book is too large to load.');
+    throw new Error('Project Gutenberg is busy right now. Please try again in a moment.');
   }
   const ct = res.headers.get('content-type') || '';
   const text = await res.text();
-  if (ct.includes('application/json')) { try { const j = JSON.parse(text); if (j && j.error) throw new Error(j.error); } catch (e) { if (e && e.message) throw e; } }
+  if (ct.includes('application/json')) { try { const j = JSON.parse(text); if (j && j.error) { console.warn('[gutenberg] error body on 200', j.error); throw new Error("Couldn't load this book. Please try again."); } } catch (e) { if (e && e.message) throw e; } }
   return text;
 }
 function pickTextUrl(formats) {
@@ -2463,7 +2465,7 @@ async function downloadGuten(i, btn) {
     const cover = book.cover || '';
     const meta = await importBook(book.title, text, { source: 'gutenberg', author, gutenId: book.id, cover });
     renderLibrary(); await openBook(meta.id);
-  } catch (e) { hideLoading(); showToast('Download failed: ' + e.message, 'err', 4000); if (btn) { btn.disabled = false; btn.textContent = '+ Add'; } }
+  } catch (e) { hideLoading(); showToast(e.message, 'err', 4000); if (btn) { btn.disabled = false; btn.textContent = '+ Add'; } }
 }
 async function downloadFeatured(gutenId, title, author) {
   const dup = S.library.find(b => b.gutenId === gutenId);
@@ -2475,7 +2477,7 @@ async function downloadFeatured(gutenId, title, author) {
     const cover = gutenCoverUrl(gutenId);
     const meta = await importBook(title, text, { source: 'gutenberg', author: author || '', gutenId, cover });
     renderLibrary(); await openBook(meta.id);
-  } catch (e) { hideLoading(); showToast('Download failed: ' + e.message, 'err', 4000); }
+  } catch (e) { hideLoading(); showToast(e.message, 'err', 4000); }
 }
 function renderFeatured() {
   const wrap = el('gutenFeatured');
