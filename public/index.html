@@ -2341,15 +2341,54 @@ function goToLibrary() {
 }
 // ── Gutenberg ──────────────────────────────────────────────
 function proxyFetch(url) { return fetch('/api/proxy?url=' + encodeURIComponent(url)); }
+// Build canonical gutenberg.org URLs straight from an ebook id, so the catalog
+// (search / featured / re-download) never depends on gutendex being reachable.
+function gutenTextUrl(id) { return 'https://www.gutenberg.org/cache/epub/' + id + '/pg' + id + '.txt'; }
+function gutenCoverUrl(id) { return 'https://www.gutenberg.org/cache/epub/' + id + '/pg' + id + '.cover.medium.jpg'; }
+function fetchWithTimeout(url, ms) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  return fetch(url, { signal: c.signal }).finally(() => clearTimeout(t));
+}
+// Fallback catalog search: gutenberg.org's own OPDS feed, fetched through the
+// resilient proxy (retry + edge cache). Used when gutendex is down/slow.
+async function searchGutenbergOPDS(query) {
+  const res = await proxyFetch('https://www.gutenberg.org/ebooks/search.opds/?query=' + encodeURIComponent(query));
+  if (!res.ok) throw new Error('opds ' + res.status);
+  const xml = await res.text();
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('opds parse error');
+  const entries = doc.getElementsByTagNameNS('*', 'entry');
+  const out = [], seen = new Set();
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    const idEl = e.getElementsByTagNameNS('*', 'id')[0];
+    const m = idEl && idEl.textContent.match(/\/ebooks\/(\d+)/);
+    if (!m) continue;                       // skip facet / navigation entries
+    const id = +m[1]; if (seen.has(id)) continue; seen.add(id);
+    const titleEl = e.getElementsByTagNameNS('*', 'title')[0];
+    const title = titleEl ? titleEl.textContent.trim() : ('Gutenberg #' + id);
+    let author = 'Unknown';
+    const contents = e.getElementsByTagNameNS('*', 'content');
+    for (let j = 0; j < contents.length; j++) {
+      const c = contents[j];
+      if ((c.getAttribute('type') || '') === 'text' && c.textContent.trim()) { author = c.textContent.trim(); break; }
+    }
+    out.push({ id, title, author, textUrl: gutenTextUrl(id), cover: gutenCoverUrl(id), downloads: null, hasText: true });
+  }
+  return out;
+}
 async function fetchBookText(url) {
   let res;
   try { res = await proxyFetch(url); }
   catch { throw new Error('Network error reaching the download proxy.'); }
   if (!res.ok) {
+    // Distinguish a real upstream miss (our proxy relays JSON {error}) from the
+    // /api/proxy function being absent entirely (a bare static 404, no JSON body).
+    const body = await res.text().catch(() => '');
+    let j = null; try { j = JSON.parse(body); } catch {}
+    if (j && j.error) throw new Error(res.status === 404 ? 'No plain-text edition is available for this book.' : j.error);
     if (res.status === 404) throw new Error('Book downloads need the /api/proxy function. Run "vercel dev" locally, or use the deployed app.');
-    let m = 'Proxy error ' + res.status;
-    try { const j = await res.json(); if (j && j.error) m = j.error; } catch {}
-    throw new Error(m);
+    throw new Error('Proxy error ' + res.status);
   }
   const ct = res.headers.get('content-type') || '';
   const text = await res.text();
@@ -2363,7 +2402,7 @@ function pickTextUrl(formats) {
   return pick ? pick[1] : null;
 }
 async function fetchGutenbergById(id) {
-  try { const r = await fetch(GUTENBERG_API + '/' + id); const book = await r.json(); const url = pickTextUrl(book.formats); if (!url) return null; return await fetchBookText(url); }
+  try { return await fetchBookText(gutenTextUrl(id)); }
   catch { return null; }
 }
 let _gutenResults = [];
@@ -2375,34 +2414,53 @@ async function searchGutenberg(query) {
   const out = el('gutenResults');
   out.innerHTML = '<div class="guten-results">' + Array(5).fill('<div class="skeleton"><div class="sk" style="width:32px;height:42px"></div><div style="flex:1"><div class="sk" style="width:60%;height:12px;margin-bottom:6px"></div><div class="sk" style="width:38%;height:10px"></div></div></div>').join('') + '</div>';
   el('gutenFeatured').style.display = 'none';
+  // 1) Try gutendex (rich metadata) on a short leash; 2) fall back to gutenberg.org
+  //    OPDS via the resilient proxy so search keeps working when gutendex is down.
+  let results = [], gErr = false, oErr = false;
   try {
-    const res = await fetch(GUTENBERG_API + '?search=' + encodeURIComponent(query) + '&languages=en');
-    const data = await res.json(); _gutenResults = data.results || [];
-    if (!_gutenResults.length) { out.innerHTML = '<div class="empty" style="padding:40px"><p>No results for “' + esc(query) + '”. Try another search.</p></div>'; return; }
-    out.innerHTML = '<div class="sec-label">' + _gutenResults.length + ' results</div><div class="guten-results">' + _gutenResults.map((b, i) => {
-      const author = b.authors && b.authors[0] ? b.authors[0].name : 'Unknown';
-      const hasText = Object.keys(b.formats || {}).some(k => k.startsWith('text/plain'));
-      const cover = b.formats && b.formats['image/jpeg'] ? b.formats['image/jpeg'] : '';
-      return '<div class="book-row" style="cursor:default;opacity:' + (hasText ? 1 : 0.5) + '">' +
-        '<div class="bk-thumb">' + (cover ? '<img src="' + esc(cover) + '" alt="">' : '📖') + '</div>' +
-        '<div class="bk-main"><div class="bk-title">' + esc(b.title) + '</div>' +
-        '<div class="bk-meta">' + esc(author) + ' · ' + (Number(b.download_count) || 0).toLocaleString() + ' downloads</div></div>' +
-        (hasText ? '<button class="btn btn-sm btn-outline" data-dl="' + i + '">+ Add</button>' : '<span class="bk-time">No text</span>') + '</div>';
-    }).join('') + '</div>';
-    out.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', () => downloadGuten(+btn.dataset.dl, btn)));
-  } catch { out.innerHTML = '<div class="empty" style="padding:40px"><p>Search failed. Check your connection.</p><div class="em-actions"><button class="btn btn-outline" onclick="searchGutenberg()">Retry</button></div></div>'; }
+    const res = await fetchWithTimeout(GUTENBERG_API + '?search=' + encodeURIComponent(query) + '&languages=en', 7000);
+    if (!res.ok) throw new Error('gutendex ' + res.status);
+    const data = await res.json();
+    results = (data.results || []).map(b => {
+      const textUrl = pickTextUrl(b.formats);
+      return {
+        id: b.id, title: b.title,
+        author: (b.authors && b.authors[0]) ? b.authors[0].name : 'Unknown',
+        textUrl, cover: (b.formats && b.formats['image/jpeg']) || gutenCoverUrl(b.id),
+        downloads: Number(b.download_count) || 0, hasText: !!textUrl,
+      };
+    });
+  } catch { gErr = true; }
+  if (!results.length) {
+    try { results = await searchGutenbergOPDS(query); } catch { oErr = true; }
+  }
+  _gutenResults = results;
+  if (!results.length) {
+    if (gErr && oErr) { out.innerHTML = '<div class="empty" style="padding:40px"><p>Search is temporarily unavailable. Project Gutenberg may be slow right now.</p><div class="em-actions"><button class="btn btn-outline" onclick="searchGutenberg()">Retry</button></div></div>'; }
+    else { out.innerHTML = '<div class="empty" style="padding:40px"><p>No results for “' + esc(query) + '”. Try another search.</p></div>'; }
+    return;
+  }
+  out.innerHTML = '<div class="sec-label">' + results.length + ' results</div><div class="guten-results">' + results.map((b, i) => {
+    const cover = b.cover;
+    return '<div class="book-row" style="cursor:default;opacity:' + (b.hasText ? 1 : 0.5) + '">' +
+      '<div class="bk-thumb">' + (cover ? '<img src="' + esc(cover) + '" alt="" onerror="this.onerror=null;this.parentNode.textContent=\'📖\'">' : '📖') + '</div>' +
+      '<div class="bk-main"><div class="bk-title">' + esc(b.title) + '</div>' +
+      '<div class="bk-meta">' + esc(b.author) + (b.downloads != null ? (' · ' + (Number(b.downloads) || 0).toLocaleString() + ' downloads') : '') + '</div></div>' +
+      (b.hasText ? '<button class="btn btn-sm btn-outline" data-dl="' + i + '">+ Add</button>' : '<span class="bk-time">No text</span>') + '</div>';
+  }).join('') + '</div>';
+  out.querySelectorAll('[data-dl]').forEach(btn => btn.addEventListener('click', () => downloadGuten(+btn.dataset.dl, btn)));
 }
 async function downloadGuten(i, btn) {
   const book = _gutenResults[i]; if (!book) return;
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   showLoading('Downloading “' + book.title + '”…');
   try {
-    const url = pickTextUrl(book.formats);
+    const url = book.textUrl || gutenTextUrl(book.id);
     if (!url) { hideLoading(); showToast('No text version available', 'err'); if (btn) { btn.disabled = false; btn.textContent = '+ Add'; } return; }
     const text = await fetchBookText(url);
     if (tokenize(text).length < 1000) { hideLoading(); showToast('That edition has too little text. Try another.', 'err', 4000); if (btn) { btn.disabled = false; btn.textContent = '+ Add'; } return; }
-    const author = book.authors && book.authors[0] ? book.authors[0].name : '';
-    const cover = book.formats && book.formats['image/jpeg'] ? book.formats['image/jpeg'] : '';
+    const author = book.author || '';
+    const cover = book.cover || '';
     const meta = await importBook(book.title, text, { source: 'gutenberg', author, gutenId: book.id, cover });
     renderLibrary(); await openBook(meta.id);
   } catch (e) { hideLoading(); showToast('Download failed: ' + e.message, 'err', 4000); if (btn) { btn.disabled = false; btn.textContent = '+ Add'; } }
@@ -2412,12 +2470,9 @@ async function downloadFeatured(gutenId, title, author) {
   if (dup) { openBook(dup.id); return; }
   showLoading('Downloading “' + title + '”…');
   try {
-    const r = await fetch(GUTENBERG_API + '/' + gutenId); const book = await r.json();
-    const url = pickTextUrl(book.formats);
-    if (!url) { hideLoading(); showToast('No text version available', 'err'); return; }
-    const text = await fetchBookText(url);
+    const text = await fetchBookText(gutenTextUrl(gutenId));
     if (tokenize(text).length < 1000) { hideLoading(); showToast('That edition has too little text.', 'err'); return; }
-    const cover = book.formats && book.formats['image/jpeg'] ? book.formats['image/jpeg'] : '';
+    const cover = gutenCoverUrl(gutenId);
     const meta = await importBook(title, text, { source: 'gutenberg', author: author || '', gutenId, cover });
     renderLibrary(); await openBook(meta.id);
   } catch (e) { hideLoading(); showToast('Download failed: ' + e.message, 'err', 4000); }
