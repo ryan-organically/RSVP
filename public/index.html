@@ -253,7 +253,7 @@ input[type=checkbox],input[type=color]{accent-color:var(--accent)}
 
 /* ============================================================ LIBRARY ============================================================ */
 .lib-shell{max-width:920px;margin-inline:auto;width:100%;padding:0 var(--s-8)}
-.util-row{display:flex;align-items:center;gap:var(--s-2);height:56px;max-width:920px;margin-inline:auto;width:100%;padding:0 var(--s-8)}
+.util-row{display:flex;align-items:center;gap:var(--s-2);height:60px;max-width:920px;margin-inline:auto;width:100%;padding:0 var(--s-8);position:relative;z-index:2}
 .brand{font-size:var(--t-base);font-weight:var(--w-semi);letter-spacing:var(--ls-snug);display:flex;align-items:center;gap:7px}
 .brand .dia{color:var(--accent)}
 .util-spacer{flex:1}
@@ -545,7 +545,7 @@ details.paste-block[open]>summary::before{content:"–"}
 /* Responsive */
 @media (max-width:720px){
   :root{--word:clamp(2.25rem,11vw,3rem)}
-  .util-row{padding:0 var(--s-5);height:52px}
+  .util-row{padding:0 var(--s-5);height:56px}
   .lib-header{padding:var(--s-6) var(--s-5) 0}
   .lib-header h2{font-size:var(--t-lg)}
   .lib-header p{margin-bottom:var(--s-5)}
@@ -574,7 +574,7 @@ details.paste-block[open]>summary::before{content:"–"}
   --cy-soft:color-mix(in oklab, var(--cy) 16%, transparent);
   --cy-line:color-mix(in oklab, var(--cy) 42%, var(--border));
   position:relative;
-  margin:calc(-1 * var(--s-4)) calc(-1 * var(--s-4)) var(--s-12);
+  margin:calc(-1 * var(--s-4)) 0 var(--s-12);
   padding:var(--s-16) var(--s-6) var(--s-12);
   overflow:hidden;
   border-bottom:var(--bw) solid var(--border);
