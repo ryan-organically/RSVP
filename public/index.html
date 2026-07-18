@@ -423,6 +423,7 @@ details.paste-block[open]>summary::before{content:"–"}
 .settings-pop input[type=number]{width:64px;padding:3px 6px;font-size:var(--t-xs)}
 .settings-pop select{padding:4px 6px;font-size:var(--t-xs)}
 .preset-row{display:flex;gap:6px;flex-wrap:wrap}
+.accent-row{display:flex;gap:7px;flex-wrap:wrap;padding:2px 0}
 .preset-sw{width:30px;height:30px;border-radius:var(--r-sm);border:var(--bw) solid var(--border);cursor:pointer;position:relative;overflow:hidden}
 .preset-sw:hover{border-color:var(--border-strong)}
 .preset-sw.active{box-shadow:0 0 0 2px var(--elevated),0 0 0 3.5px var(--text)}
@@ -1182,6 +1183,13 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
         <button class="btn btn-primary" onclick="submitPastedDigest()" style="height:40px">+ Add</button>
       </div>
       <div class="digest-legend" id="digestLegend"></div>
+      <div class="digest-sync" id="digestSync" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 14px">
+        <input id="syncTokenInput" type="password" autocomplete="off" placeholder="Cloud sync token — syncs digests + your books across devices"
+          style="flex:1;min-width:200px;height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--border,#2a2a2a);background:var(--bg-2,#161616);color:inherit">
+        <button class="btn btn-outline btn-sm" onclick="connectSync()">Connect</button>
+        <button class="btn btn-outline btn-sm" onclick="pullRemoteDigests(true)">↻ Refresh</button>
+        <span id="syncStatus" class="digest-time"></span>
+      </div>
       <div id="digestList"></div>
     </div>
   </div>
@@ -1451,6 +1459,17 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
         <div class="set-sep"></div>
         <div class="set-row"><span>Theme preset</span></div>
         <div class="preset-row" id="presetRow"></div>
+        <div class="set-sep"></div>
+        <div class="set-row"><span>Accent color</span></div>
+        <div class="accent-row" id="settingsAccentRow" role="group" aria-label="Accent color">
+          <button class="accent-dot" style="background:#22d3ee" onclick="setAccent('#22d3ee')" aria-label="Cyan" title="Cyan"></button>
+          <button class="accent-dot" style="background:#e84040" onclick="setAccent('#e84040')" aria-label="Red" title="Red"></button>
+          <button class="accent-dot" style="background:#e88400" onclick="setAccent('#e88400')" aria-label="Orange" title="Orange"></button>
+          <button class="accent-dot" style="background:#40b860" onclick="setAccent('#40b860')" aria-label="Green" title="Green"></button>
+          <button class="accent-dot" style="background:#4088e8" onclick="setAccent('#4088e8')" aria-label="Blue" title="Blue"></button>
+          <button class="accent-dot" style="background:#a855f7" onclick="setAccent('#a855f7')" aria-label="Purple" title="Purple"></button>
+          <button class="accent-dot" style="background:#e840a0" onclick="setAccent('#e840a0')" aria-label="Pink" title="Pink"></button>
+        </div>
       </div>
     </div>
 
@@ -1507,6 +1526,7 @@ const LS = {
 };
 const K = {
   lib: 'rsvp:library', settings: 'rsvp:settings', digests: 'rsvp:digests', stats: 'rsvp:stats',
+  syncToken: 'rsvp:syncToken', syncUrl: 'rsvp:syncUrl',
   pos: id => 'rsvp:pos:' + id, bm: id => 'rsvp:bm:' + id, hl: id => 'rsvp:hl:' + id,
 };
 
@@ -2039,6 +2059,7 @@ async function importBook(title, text, opts) {
   if (!ok) { delete S.textCache[id]; throw new Error('Could not save book (storage full).'); }
   S.library.unshift(meta);
   if (!LS.set(K.lib, S.library)) { S.library.shift(); delete S.textCache[id]; IDB.del(id); throw new Error('Could not save library (storage full).'); }
+  pushBook(meta, text); // mirror to focal.wiki if connected (text only for imported books)
   return meta;
 }
 async function confirmDelete(id) {
@@ -2047,6 +2068,7 @@ async function confirmDelete(id) {
   S.library = S.library.filter(x => x.id !== id); LS.set(K.lib, S.library);
   delete S.textCache[id]; IDB.del(id);
   LS.del(K.pos(id)); LS.del(K.bm(id)); LS.del(K.hl(id));
+  deleteRemoteBook(id); // remove from focal.wiki too
   renderLibrary();
   showToast('Deleted', 'ok');
 }
@@ -2075,6 +2097,11 @@ async function openBook(id) {
     }
     if (!text && meta.source === 'welcome') { // bundled welcome read self-heals from /welcome.txt
       try { const r = await fetch('/welcome.txt'); if (r.ok) { text = await r.text(); S.textCache[id] = text; IDB.set(id, text); } } catch {}
+    }
+    if (!text && meta.source !== 'gutenberg' && meta.source !== 'welcome') { // imported book → self-heal from cloud
+      showLoading('Restoring from cloud…');
+      text = await fetchRemoteBookText(id);
+      if (text) { S.textCache[id] = text; IDB.set(id, text); }
     }
     if (!text) { hideLoading(); showToast('Could not load this book. Try deleting and re-adding it.', 'err', 4000); return; }
     S.textCache[id] = text;
@@ -2618,7 +2645,11 @@ function switchTab(tab) {
     if (!el('gutenFeatured').dataset.rendered) { renderFeatured(); el('gutenFeatured').dataset.rendered = '1'; }
     if (!el('gutenSearch').value.trim()) { el('gutenResults').innerHTML = ''; el('gutenFeatured').style.display = ''; }
   }
-  if (tab === 'digest') { renderDigestLegend(); renderDigestList(); }
+  if (tab === 'digest') {
+    renderDigestLegend(); renderDigestList();
+    const tk = getSyncToken();
+    if (tk) { const inp = el('syncTokenInput'); if (inp && !inp.value) inp.value = tk; pullRemoteDigests(false); }
+  }
 }
 function toggleTheme() {
   S.theme = S.theme === 'dark' ? 'light' : 'dark';
@@ -2631,8 +2662,9 @@ function setAccent(color) {
   document.documentElement.style.setProperty('--accent', color);
   try { const n = parseInt(color.slice(1), 16); const f = v => (v = v/255) <= 0.03928 ? v/12.92 : ((v+0.055)/1.055)**2.4; const L = 0.2126*f(n>>16&255) + 0.7152*f(n>>8&255) + 0.0722*f(n&255); document.documentElement.style.setProperty('--accent-contrast', L > 0.45 ? '#04181d' : '#ffffff'); } catch {}
   S.accent = color;
-  const dots = document.querySelectorAll('#accentPicker .accent-dot');
-  dots.forEach((d, i) => d.classList.toggle('active', (DOT_COLORS[i] || '').toLowerCase() === color.toLowerCase()));
+  document.querySelectorAll('#accentPicker, #settingsAccentRow').forEach(group => {
+    group.querySelectorAll('.accent-dot').forEach((d, i) => d.classList.toggle('active', (DOT_COLORS[i] || '').toLowerCase() === color.toLowerCase()));
+  });
   const ci = el('accentColorInput'); if (ci && /^#[0-9a-f]{6}$/i.test(color)) ci.value = color;
   saveSettings();
 }
@@ -2859,6 +2891,87 @@ function getDigests() {
 }
 function setDigests(arr) { LS.set(K.digests, arr.slice(0, 100)); }
 let DIGEST_SESSIONS = [];
+
+// ── Cloud sync (focal.wiki) — digests follow you across devices ────────────
+function getSyncToken() { return (LS.get(K.syncToken, '') || '').trim(); }
+function getSyncUrl() { return (LS.get(K.syncUrl, '') || 'https://focal.wiki/api/digests'); }
+function setSyncStatus(msg) { const e = el('syncStatus'); if (e) e.textContent = msg || ''; }
+function connectSync() {
+  const t = (el('syncTokenInput').value || '').trim();
+  LS.set(K.syncToken, t);
+  if (t) { setSyncStatus('connecting…'); pullRemoteDigests(true); pullRemoteBooks(true); }
+  else setSyncStatus('disconnected');
+}
+async function pullRemoteDigests(announce) {
+  const token = getSyncToken();
+  if (!token) { if (announce) setSyncStatus('enter a token first'); return; }
+  try {
+    const r = await fetch(getSyncUrl(), { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) { setSyncStatus(r.status === 401 ? 'bad token' : 'sync error ' + r.status); return; }
+    const remote = await r.json();
+    if (!Array.isArray(remote)) { setSyncStatus('sync error'); return; }
+    const have = new Set(DIGEST_SESSIONS.map(s => s.id));
+    let added = 0;
+    for (const s of remote) { if (s && s.id && Array.isArray(s.blocks) && !have.has(s.id)) { DIGEST_SESSIONS.push(s); have.add(s.id); added++; } }
+    DIGEST_SESSIONS.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+    setDigests(DIGEST_SESSIONS); renderDigestList();
+    setSyncStatus(added ? ('＋' + added + ' from cloud') : 'up to date');
+  } catch (e) { setSyncStatus('offline'); }
+}
+async function pushDigest(session) {
+  const token = getSyncToken();
+  if (!token) return;
+  try {
+    await fetch(getSyncUrl(), { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(session) });
+  } catch (e) {}
+}
+async function deleteRemoteDigest(id) {
+  const token = getSyncToken();
+  if (!token) return;
+  try { await fetch(getSyncUrl() + '?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }); } catch (e) {}
+}
+
+// ── Cloud sync for the book library — downloaded books follow you across devices ──
+function getBooksUrl() { const u = getSyncUrl(); return u.includes('/digests') ? u.replace('/digests', '/books') : 'https://focal.wiki/api/books'; }
+async function pullRemoteBooks(announce) {
+  const token = getSyncToken();
+  if (!token) return;
+  try {
+    const r = await fetch(getBooksUrl(), { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return;
+    const remote = await r.json();
+    if (!Array.isArray(remote)) return;
+    const have = new Set(S.library.map(b => b.id));
+    let added = 0;
+    for (const e of remote) { if (e && e.id && e.meta && !have.has(e.id)) { S.library.push(e.meta); have.add(e.id); added++; } }
+    if (added) { LS.set(K.lib, S.library); if (typeof renderLibrary === 'function') renderLibrary(); }
+    if (announce) showToast(added ? ('Synced ' + added + ' book' + (added > 1 ? 's' : '') + ' from cloud') : 'Library up to date', 'ok');
+  } catch (e) {}
+}
+async function pushBook(meta, text) {
+  const token = getSyncToken();
+  if (!token || !meta) return;
+  // Gutenberg/welcome books re-heal from their own source, so only their metadata is stored.
+  const heals = meta.source === 'gutenberg' || meta.source === 'welcome';
+  const body = { id: meta.id, meta };
+  if (!heals && typeof text === 'string') body.text = text;
+  try { await fetch(getBooksUrl(), { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); } catch (e) {}
+}
+async function deleteRemoteBook(id) {
+  const token = getSyncToken();
+  if (!token) return;
+  try { await fetch(getBooksUrl() + '?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }); } catch (e) {}
+}
+async function fetchRemoteBookText(id) {
+  const token = getSyncToken();
+  if (!token) return '';
+  try {
+    const r = await fetch(getBooksUrl() + '?id=' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return '';
+    const d = await r.json();
+    return (d && typeof d.text === 'string') ? d.text : '';
+  } catch (e) { return ''; }
+}
 function renderDigestLegend() {
   el('digestLegend').innerHTML = Object.values(TAG_COLORS).map(c => '<span class="pill ' + c.cls + '">' + c.label + '</span>').join('');
 }
@@ -2875,9 +2988,10 @@ function submitPastedDigest() {
   const session = { id: 'd-' + (crypto.randomUUID ? crypto.randomUUID() : Date.now()), title, project: 'Dev Notes', time: new Date().toISOString(), blocks };
   DIGEST_SESSIONS.unshift(session); setDigests(DIGEST_SESSIONS);
   el('digestPasteText').value = ''; renderDigestList();
+  pushDigest(session); // mirror to focal.wiki if connected
   showToast('Digest created · ' + blocks.length + ' blocks', 'ok');
 }
-function deleteDigest(id) { DIGEST_SESSIONS = DIGEST_SESSIONS.filter(s => s.id !== id); setDigests(DIGEST_SESSIONS); renderDigestList(); }
+function deleteDigest(id) { DIGEST_SESSIONS = DIGEST_SESSIONS.filter(s => s.id !== id); setDigests(DIGEST_SESSIONS); renderDigestList(); deleteRemoteDigest(id); }
 function renderDigestList() {
   const wrap = el('digestList');
   if (!DIGEST_SESSIONS.length) { wrap.innerHTML = '<div class="empty"><div class="em-ico">⌗</div><h3>No digests yet</h3><p>Run /digest or /diff in Claude Code, or paste dev notes above to turn them into a speed-readable brief.</p></div>'; return; }
@@ -3191,6 +3305,7 @@ lpDemo._init();
   S.library = getLibrary();
   DIGEST_SESSIONS = getDigests();
   renderLibrary(); updateStatsChip();
+  if (getSyncToken()) { pullRemoteBooks(false); } // bring down books added on other devices
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
