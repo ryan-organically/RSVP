@@ -2,6 +2,9 @@
   "buildCommand": "",
   "outputDirectory": "public",
   "cleanUrls": true,
+  "functions": {
+    "api/proxy.js": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -20,12 +23,6 @@
       "source": "/(.+)\\.(css|js|woff2|png|jpg|svg|ico|webmanifest)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    },
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store" }
       ]
     }
   ]
