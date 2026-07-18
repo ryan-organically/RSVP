@@ -35,7 +35,7 @@ Both commands follow the same delivery:
 2. **Format** — CLI injects digest into a copy of `public/index.html`
 3. **Persist** — Injected script saves to browser `localStorage` (accumulates across sessions)
 4. **Open browser** — Launches the HTML file (macOS/Windows/WSL/Linux)
-5. **Sync** *(optional)* — With `--sync`, POSTs to `/api/digests` on your RSVP instance
+5. **Sync** *(automatic when a token is set)* — Both `/digest` and `/diff` POST the digest to `/api/digests` on focal.wiki whenever `$SYNC_TOKEN` is exported, so it lands in your dev digests on every device. With no token the step is silently skipped and the digest stays local
 
 ---
 
@@ -80,7 +80,7 @@ Both commands follow the same delivery:
 ## Storage
 
 - **Browser localStorage** — digests persist in the `rsvp:digests` key (up to 100), available in the Dev Digest tab
-- **Cloud sync** *(opt-in)* — `--sync` POSTs each digest to `/api/digests` on focal.wiki (Turso-backed), so it shows up on every device
+- **Cloud sync** *(opt-in via token)* — once `$SYNC_TOKEN` is exported, `/digest` and `/diff` automatically POST each digest to `/api/digests` on focal.wiki (Turso-backed), so it shows up on every device. The token is the opt-in: without it, sync is skipped and everything stays local. This is the accumulate-on-computer → review-on-phone path: run digests during the day, then open focal.wiki on your phone at night, paste the same token, and pull the lot
 
 ### Cloud sync setup (cross-device, via focal.wiki)
 

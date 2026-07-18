@@ -17,7 +17,7 @@ Local-first speed-reading app with Dev Digest integration for Claude Code sessio
 | `/diff main` | Digest current branch vs main |
 | `/diff <branch>` | Digest current branch vs any branch |
 
-Digests are saved to the browser's `localStorage` (key `rsvp:digests`). Cloud sync is opt-in and off by default: with `$SYNC_TOKEN` exported, `--sync` (used by `/digest` and `/diff`) also pushes the digest to `focal.wiki/api/digests`; without the token, sync is silently skipped and everything stays local. The reader's Dev Digest tab has a matching token field to pull synced digests on other devices. See `DIGEST_WORKFLOW.md` for setup.
+Digests are saved to the browser's `localStorage` (key `rsvp:digests`). Cloud sync is opt-in via the token and off by default: with `$SYNC_TOKEN` exported, `/digest` and `/diff` automatically push each digest to `focal.wiki/api/digests`; without the token, sync is silently skipped and everything stays local. This is the accumulate-on-computer → review-on-phone flow. The reader's Dev Digest tab has a matching token field to pull synced digests on other devices. See `DIGEST_WORKFLOW.md` for setup.
 
 ## Dev Setup
 

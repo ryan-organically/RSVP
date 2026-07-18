@@ -70,6 +70,9 @@
   --accent-bg-2:color-mix(in oklab, var(--accent) 22%, transparent);
   --accent-line:color-mix(in oklab, var(--accent) 60%, var(--border));
   --accent-glow:color-mix(in oklab, var(--accent) 34%, transparent);
+  --select:#e84040;
+  --select-bg:color-mix(in oklab, var(--select) 15%, transparent);
+  --select-line:color-mix(in oklab, var(--select) 55%, var(--border));
   --good:#46c07a; --warn:#e0a23a; --danger:#e0504a; --info:#5aa6ec; --decide:#b07ce8;
 
   --font-ui:"Inter","Inter Variable",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -177,7 +180,7 @@ textarea{resize:vertical;min-height:96px;line-height:var(--lh-body)}
   display:inline-flex;align-items:center;gap:var(--s-2);
   transition:color var(--dur-1) var(--ease),border-color var(--dur-2) var(--ease)}
 .tab:hover{color:var(--text)}
-.tab.active{color:var(--text);border-bottom-color:var(--text)}
+.tab.active{color:var(--select);border-bottom-color:var(--select)}
 .tab .count{font-size:var(--t-xs);color:var(--text-faint);background:var(--surface-2);
   border-radius:var(--r-full);padding:0 6px;line-height:16px;min-width:16px}
 
@@ -186,7 +189,7 @@ textarea{resize:vertical;min-height:96px;line-height:var(--lh-body)}
 .segmented button{padding:5px 12px;font-size:var(--t-sm);font-weight:var(--w-medium);color:var(--text-dim);border-radius:5px;
   transition:background var(--dur-1) var(--ease),color var(--dur-1) var(--ease)}
 .segmented button:hover{color:var(--text)}
-.segmented button.active{background:var(--surface-2);color:var(--text);box-shadow:var(--sh-1)}
+.segmented button.active{background:var(--select-bg);color:var(--select);box-shadow:var(--sh-1)}
 
 /* ---- Pills ---- */
 .pill{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;font-size:var(--t-xs);
@@ -422,6 +425,8 @@ details.paste-block[open]>summary::before{content:"–"}
 .settings-pop .set-sep{height:1px;background:var(--border);margin:2px 0}
 .settings-pop input[type=number]{width:64px;padding:3px 6px;font-size:var(--t-xs)}
 .settings-pop select{padding:4px 6px;font-size:var(--t-xs)}
+/* Red selection cues for settings controls */
+.settings-pop input[type=checkbox],.settings-pop input[type=range],.settings-pop input[type=number]{accent-color:var(--select)}
 .preset-row{display:flex;gap:6px;flex-wrap:wrap}
 .accent-row{display:flex;gap:7px;flex-wrap:wrap;padding:2px 0}
 .preset-sw{width:30px;height:30px;border-radius:var(--r-sm);border:var(--bw) solid var(--border);cursor:pointer;position:relative;overflow:hidden}
