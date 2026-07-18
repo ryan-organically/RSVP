@@ -5,10 +5,12 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI = join(__dirname, '..', 'bin', 'claude-digest.js');
-const out = join(__dirname, '..', '..', 'node_modules', '.cache-cli-sync-out.html');
+// Scratch output in the OS temp dir — this is a zero-dependency project, so node_modules/ may not exist.
+const out = join(tmpdir(), 'cli-sync-out-' + process.pid + '.html');
 
 let received = null;
 const srv = http.createServer((req, res) => {
