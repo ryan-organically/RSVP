@@ -7,3 +7,6 @@ node_modules/
 claude-digest/node_modules/
 claude-digest/test-*.html
 .claude/settings.local.json
+
+# internal strategy / logs, not for the public repo
+notes/
