@@ -79,8 +79,20 @@ Both commands follow the same delivery:
 
 ## Storage
 
-- **Browser localStorage** — digests persist in `localDigests` key (up to 50), available in the Dev Digest tab
-- **Remote** *(opt-in)* — `POST /api/digests` on your deployed RSVP instance (requires `--sync` flag)
+- **Browser localStorage** — digests persist in the `rsvp:digests` key (up to 100), available in the Dev Digest tab
+- **Cloud sync** *(opt-in)* — `--sync` POSTs each digest to `/api/digests` on focal.wiki (Turso-backed), so it shows up on every device
+
+### Cloud sync setup (cross-device, via focal.wiki)
+
+The `/api/digests` endpoint (`api/digests.js`) stores digests in the project's Turso database, gated by a single shared secret. One-time setup:
+
+1. **Pick a secret** and set it in the Vercel project env:
+   `vercel env add SYNC_TOKEN production` (paste a long random string). Turso vars (`TURSO_URL`, `TURSO_AUTH_TOKEN`) are already provided by the integration.
+2. **Redeploy:** `vercel --prod` (so `api/digests.js` ships).
+3. **CLI (push):** export the same secret where Claude Code runs — `export SYNC_TOKEN=…` — then `/digest` auto-syncs (or run any digest with `--sync`).
+4. **Reader (read):** open focal.wiki on any device → **Dev Digest** tab → paste the token into the sync box → **Connect**. Digests then pull on every visit, and the back button / tab become your full history.
+
+The token *is* the key to your private digest space — anyone with it can read/write your digests, so keep it long and secret. The reader sends it only to focal.wiki over HTTPS; books and reading stay 100% local as before.
 
 ---
 

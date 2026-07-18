@@ -6,8 +6,8 @@ import { writeFile as writeFileAsync } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { tmpdir, platform } from 'node:os';
 import { execSync } from 'node:child_process';
-import { findCurrentTranscript, parseTranscriptChunks } from '../src/transcript.js';
-import { formatRSVP } from '../src/formats/rsvp.js';
+import { findCurrentTranscript, parseTranscriptChunks, parseLastResponse } from '../src/transcript.js';
+import { formatRSVP, buildSession } from '../src/formats/rsvp.js';
 import { formatJSON } from '../src/formats/json.js';
 import { formatMarkdown } from '../src/formats/markdown.js';
 import { formatHTML } from '../src/formats/html.js';
@@ -16,8 +16,10 @@ const { values } = parseArgs({
   allowPositionals: true,
   options: {
     parse:   { type: 'boolean', default: false },
+    last:    { type: 'boolean', default: false },
     inject:  { type: 'boolean', default: false },
     open:    { type: 'boolean', default: false },
+    sync:    { type: 'boolean', default: false },
     format:  { type: 'string', short: 'f', default: 'json' },
     output:  { type: 'string', short: 'o' },
     help:    { type: 'boolean', short: 'h', default: false },
@@ -28,10 +30,13 @@ if (values.help) {
   console.log(`claude-digest - Fast Dev Digest from Claude Code sessions
 
 Usage:
+  claude-digest --last --open            Mirror the most recent response verbatim → RSVP Reader
   claude-digest --parse                  Parse current session → JSON chunks to stdout
   echo '<json>' | claude-digest --inject --open   Format digest and open in RSVP Reader
 
 Options:
+  --last                Read the latest assistant response verbatim and open it in RSVP
+  --sync                Also push the digest to focal.wiki ($SYNC_TOKEN required)
   --parse               Parse transcript, output chunks as JSON
   --inject              Read digest JSON from stdin, format it
   --open                Open formatted output in browser
@@ -41,7 +46,59 @@ Options:
   process.exit(0);
 }
 
+// Turn the verbatim last response into RSVP blocks: one block per paragraph / list
+// item / heading, with markdown syntax stripped so the prose reads cleanly word-by-word.
+function responseToBlocks(text) {
+  const clean = (s) => s
+    .replace(/`([^`]*)`/g, '$1')                 // inline code → text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')           // bold
+    .replace(/(^|[^*])\*([^*]+)\*/g, '$1$2')     // italics
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')     // links → label
+    .replace(/^\s{0,3}#{1,6}\s+/, '')            // headings
+    .replace(/^\s*[-*•]\s+/, '')                 // bullets
+    .replace(/^\s*\d+[.)]\s+/, '')               // numbered list
+    .replace(/^\s*>\s?/, '')                     // blockquote
+    .replace(/\s+/g, ' ')
+    .trim();
+  const blocks = [];
+  for (const line of text.split('\n')) {
+    if (/^\s*```/.test(line)) continue;          // skip code-fence markers
+    const c = clean(line);
+    if (c) blocks.push({ tag: 'info', text: c });
+  }
+  return blocks;
+}
+
 async function main() {
+  if (values.last) {
+    // Mirror the most recent response verbatim into RSVP — no summarization.
+    const transcriptPath = await findCurrentTranscript();
+    if (!transcriptPath) { console.error('No session transcript found.'); process.exit(1); }
+    const { text, meta } = await parseLastResponse(transcriptPath);
+    if (!text) { console.error('No assistant response found to mirror.'); process.exit(1); }
+    const blocks = responseToBlocks(text);
+    if (!blocks.length) { console.error('Response had no readable text.'); process.exit(1); }
+    let project = 'session';
+    try { project = basename(execSync('git rev-parse --show-toplevel', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); }
+    catch { project = basename(process.cwd()); }
+    const title = blocks[0].text.split(' ').slice(0, 7).join(' ').slice(0, 60) || 'Latest response';
+    const digest = { title, project, blocks };
+    const session = buildSession(digest, { timestamp: meta.timestamp || new Date().toISOString() });
+    const output = await formatRSVP(digest, {}, session);
+    if (values.sync) await syncDigest(session);
+    if (values.output) {
+      await writeFileAsync(values.output, output, 'utf-8');
+    } else if (values.open) {
+      const tmpPath = join(tmpdir(), `claude-digest-${Date.now()}.html`);
+      await writeFileAsync(tmpPath, output, 'utf-8');
+      openBrowser(tmpPath);
+      console.error(`Opened: ${tmpPath}`);
+    } else {
+      console.log(output);
+    }
+    return;
+  }
+
   if (values.parse) {
     // Parse mode: find transcript, output chunks as JSON
     const transcriptPath = await findCurrentTranscript();
@@ -49,7 +106,7 @@ async function main() {
     const { chunks, meta } = await parseTranscriptChunks(transcriptPath);
     if (!chunks.length) { console.error('Empty session.'); process.exit(1); }
     let repoRoot;
-    try { repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim(); } catch { repoRoot = process.cwd(); }
+    try { repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { repoRoot = process.cwd(); }
     console.log(JSON.stringify({ project: basename(repoRoot), chunks, meta }));
     return;
   }
@@ -60,14 +117,16 @@ async function main() {
     const meta = { timestamp: new Date().toISOString() };
     const fmt = values.open ? 'rsvp' : values.format;
 
+    const session = buildSession(digest, meta);
     let output;
     switch (fmt) {
       case 'markdown': case 'md': output = formatMarkdown(digest, meta); break;
       case 'html': output = formatHTML(digest, meta); break;
-      case 'rsvp': output = await formatRSVP(digest, meta); break;
+      case 'rsvp': output = await formatRSVP(digest, meta, session); break;
       case 'json': default: output = formatJSON(digest, meta); break;
     }
 
+    if (values.sync) await syncDigest(session);
     if (values.open) {
       const tmpPath = join(tmpdir(), `claude-digest-${Date.now()}.html`);
       await writeFileAsync(tmpPath, output, 'utf-8');
@@ -83,6 +142,25 @@ async function main() {
 
   console.error('Use --parse or --inject. Run with --help for info.');
   process.exit(1);
+}
+
+// Push a digest to your focal.wiki instance so it shows up on every device.
+// Token from $SYNC_TOKEN (or $FOCAL_SYNC_TOKEN); endpoint from $FOCAL_SYNC_URL.
+async function syncDigest(session) {
+  const url = process.env.FOCAL_SYNC_URL || 'https://focal.wiki/api/digests';
+  const token = (process.env.SYNC_TOKEN || process.env.FOCAL_SYNC_TOKEN || '').trim();
+  if (!token) { console.error('Sync skipped: set $SYNC_TOKEN to push to focal.wiki.'); return; }
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(session),
+    });
+    if (r.ok) console.error(`Synced to ${url}`);
+    else console.error(`Sync failed: HTTP ${r.status} ${(await r.text()).slice(0, 120)}`);
+  } catch (e) {
+    console.error('Sync failed: ' + (e.message || e));
+  }
 }
 
 function readStdin() {

@@ -14,7 +14,7 @@ const MAX_CHARS = 120_000;
 export async function findCurrentTranscript() {
   let repoRoot;
   try {
-    repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim();
+    repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   } catch {
     repoRoot = process.cwd();
   }
@@ -107,6 +107,84 @@ export async function parseTranscriptChunks(filePath, numChunks = 2) {
   }
 
   return { chunks: chunks.filter(c => c.trim()), meta };
+}
+
+/**
+ * Read the FULL text of the most recent SUBSTANTIVE assistant response
+ * (verbatim, uncapped). Used to mirror the latest answer into RSVP for
+ * reading — no summarization. Tool-call-only turns (no text block) are
+ * skipped, and short acknowledgments ("Digest opened.", one-line status
+ * confirmations) are skipped too: RSVP exists for reading mass amounts of
+ * text, so the obvious long response wins over terminal feedback. Responses
+ * shorter than minChars are passed over while walking backwards; if nothing
+ * qualifies, the old behavior (answer before the last user turn, else the
+ * latest answer) is the fallback.
+ */
+export async function parseLastResponse(filePath, { minChars = 400 } = {}) {
+  const rl = createInterface({
+    input: createReadStream(filePath),
+    crlfDelay: Infinity,
+  });
+
+  let meta = { cwd: '', timestamp: '' };
+  let pending = '';        // most recent assistant text seen so far
+  let pendingTs = '';
+  let beforeLastUser = ''; // assistant text that preceded the last REAL user message
+  let beforeLastUserTs = '';
+  const history = [];      // recent assistant responses, oldest → newest
+
+  for await (const line of rl) {
+    let entry;
+    try { entry = JSON.parse(line); } catch { continue; }
+
+    if (entry.type === 'user' && entry.cwd && !meta.cwd) meta.cwd = entry.cwd;
+
+    // A real user turn (typed input, including a /command) carries actual text —
+    // tool_result carriers don't. Snapshot the answer that preceded it.
+    if (entry.type === 'user' && entry.message?.role === 'user' && extractText(entry.message.content)) {
+      beforeLastUser = pending;
+      beforeLastUserTs = pendingTs;
+    }
+
+    if (entry.type === 'assistant' && entry.message?.role === 'assistant') {
+      const content = entry.message.content;
+      if (!Array.isArray(content)) continue;
+      const text = content
+        .filter(b => b.type === 'text' && b.text?.trim())
+        .map(b => b.text.trim())
+        .join('\n\n');
+      if (text) {
+        pending = text;
+        pendingTs = entry.timestamp || pendingTs;
+        history.push({ text, ts: pendingTs });
+        if (history.length > 50) history.shift();
+      }
+    }
+  }
+
+  // Preference order: the answer the user just read (before invoking the
+  // command) if it's substantive; otherwise the most recent response long
+  // enough to be worth speed-reading; otherwise the old fallback.
+  let text = '';
+  let ts = '';
+  if (beforeLastUser.length >= minChars) {
+    text = beforeLastUser;
+    ts = beforeLastUserTs;
+  } else {
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].text.length >= minChars) {
+        text = history[i].text;
+        ts = history[i].ts;
+        break;
+      }
+    }
+  }
+  if (!text) {
+    text = beforeLastUser || pending;
+    ts = beforeLastUser ? beforeLastUserTs : pendingTs;
+  }
+  meta.timestamp = ts || meta.timestamp;
+  return { text, meta };
 }
 
 function extractText(content) {

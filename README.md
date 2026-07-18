@@ -2,7 +2,7 @@
 
 Speed read anything. One word at a time, with ORP (Optimal Recognition Point) highlighting.
 
-**Local-first and private.** Your library, reading positions, bookmarks, and notes live entirely in your own browser. Nothing is uploaded to any server, and the app runs with zero credentials. One HTML file plus a single stateless proxy function.
+**Local-first and private.** Your library, reading positions, bookmarks, and notes live entirely in your own browser. By default nothing is uploaded to any server and the app runs with zero credentials. An optional, token-gated cloud sync can mirror your digests and imported books across devices — off unless you turn it on.
 
 **Demo:** [focal.wiki](https://focal.wiki)
 
@@ -20,6 +20,7 @@ Speed read anything. One word at a time, with ORP (Optimal Recognition Point) hi
 - **Library management** — upload `.txt`/`.md`/`.pdf`, drag-and-drop, or paste text (pasted web HTML is cleaned automatically)
 - **Free Library** — search and download 60,000+ public-domain Project Gutenberg books
 - **Dev Digest** — speed-read color-coded summaries of coding sessions
+- **Optional cloud sync** — a single secret token syncs digests and imported books across devices; no accounts, no email, delete the token and the link is gone
 - **Installable PWA** with offline reading of any book you have opened
 - **Dark/light theme**, custom accent colors, and named presets
 - **Accessible**: keyboard-first, focus rings, ARIA labels, reduced-motion aware, pinch-zoom enabled
@@ -34,6 +35,8 @@ Everything is on-device. There are no accounts and no shared database.
 | Library, positions, bookmarks, highlights, digests, settings, stats | `localStorage` (`rsvp:*` keys) |
 
 The only network calls are: the Google Fonts and pdf.js CDNs, the Project Gutenberg search API (`gutendex.com`), and the bundled `/api/proxy` function, which downloads Gutenberg book text. The proxy is stateless, allowlisted to `gutenberg.org`, and never touches a database or the filesystem.
+
+**Optional cloud sync:** if you paste a sync token into the Dev Digest tab (or export `SYNC_TOKEN` for the CLI), digests and imported book text also sync through `/api/digests` and `/api/books`, backed by Turso. The token is the whole account: rows are namespaced by a hash of it, requests without it are rejected, and no endpoint can list or read another token's data. Leave the token blank and the app never talks to the sync endpoints at all.
 
 ## Setup
 
@@ -53,7 +56,7 @@ npm run dev          # static dev server on http://localhost:3000
 vercel --prod
 ```
 
-No environment variables are required. Any static host works; on Vercel the single `/api/proxy` function powers Gutenberg downloads.
+No environment variables are required for the core app. Any static host works; on Vercel the `/api/proxy` function powers Gutenberg downloads. To enable the optional cloud sync, set `TURSO_URL`, `TURSO_AUTH_TOKEN`, and a self-chosen `SYNC_TOKEN` in the Vercel project (see [DIGEST_WORKFLOW.md](DIGEST_WORKFLOW.md)); without them the sync endpoints simply refuse and the app stays fully local.
 
 ### Claude Code Integration
 
@@ -67,7 +70,7 @@ The repo ships with Claude Code slash commands. Open the project with [Claude Co
 |-------|------|
 | Frontend | Vanilla HTML/CSS/JS — single file (`public/index.html`) |
 | Storage | IndexedDB + localStorage (local-first, in-browser) |
-| Server | One stateless function: `api/proxy.js` (Gutenberg CORS proxy) |
+| Server | Stateless functions: `api/proxy.js` (Gutenberg CORS proxy) + opt-in `api/digests.js` / `api/books.js` (token-gated sync, Turso) |
 | Hosting | Vercel (or any static host) |
 
 ## Dev Digest
@@ -80,7 +83,7 @@ The reader doubles as a Dev Digest viewer — color-coded summaries of coding se
 | `/diff` | Digest working tree changes |
 | `/diff main` | Digest current branch vs main |
 
-See [DIGEST_WORKFLOW.md](DIGEST_WORKFLOW.md). Digests live only in your browser's `localStorage`.
+See [DIGEST_WORKFLOW.md](DIGEST_WORKFLOW.md). Digests live in your browser's `localStorage`, and optionally sync across devices with a `SYNC_TOKEN` (the `--sync` flag on the CLI).
 
 ### Tag System
 
@@ -104,6 +107,10 @@ public/
   manifest.webmanifest# PWA manifest
 api/
   proxy.js            # Stateless, allowlisted Gutenberg CORS proxy (no DB, no FS)
+  digests.js          # Opt-in digest sync (SYNC_TOKEN bearer auth, Turso)
+  books.js            # Opt-in imported-book sync (same auth pattern)
+lib/
+  turso.js            # Zero-dependency Turso/libSQL HTTP client
 claude-digest/        # Digest formatter + browser launcher CLI
 .claude/skills/       # /digest and /diff slash commands
 vercel.json           # Cache headers

@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "npx serve public -p 3000",
-    "build": "echo 'static site'"
+    "build": "echo 'static site'",
+    "test": "node claude-digest/test/digests-api.test.mjs && node claude-digest/test/books-api.test.mjs && node claude-digest/test/cli-sync.test.mjs"
   }
 }

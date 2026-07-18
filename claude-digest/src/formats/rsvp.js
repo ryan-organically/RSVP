@@ -23,20 +23,24 @@ async function findReader() {
  * Generate a full RSVP reader HTML with a digest pre-injected.
  * Opens directly to the digest tab and auto-starts playback.
  */
-export async function formatRSVP(digest, meta = {}) {
-  const readerPath = await findReader();
-  if (!readerPath) {
-    throw new Error('Could not find rsvp-reader HTML. Expected next to claude-digest/ directory.');
-  }
-  let html = await readFile(readerPath, 'utf-8');
-
-  const session = {
+export function buildSession(digest, meta = {}) {
+  return {
     id: slugify(digest.title) + '-' + Date.now().toString(36),
     title: digest.title,
     project: digest.project || '',
     time: meta.timestamp || new Date().toISOString(),
     blocks: digest.blocks,
   };
+}
+
+export async function formatRSVP(digest, meta = {}, session = null) {
+  const readerPath = await findReader();
+  if (!readerPath) {
+    throw new Error('Could not find rsvp-reader HTML. Expected next to claude-digest/ directory.');
+  }
+  let html = await readFile(readerPath, 'utf-8');
+
+  session = session || buildSession(digest, meta);
 
   // Inject the digest session: persist to localStorage, auto-open, fix back button
   const autoOpenScript = `
