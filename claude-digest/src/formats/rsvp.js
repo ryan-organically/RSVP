@@ -49,12 +49,20 @@ export async function formatRSVP(digest, meta = {}, session = null) {
 (function() {
   const _injectedDigest = ${JSON.stringify(session)};
 
-  // Persist to localStorage so it survives across app opens
+  // Persist into the app's canonical digest collection so it accumulates
+  // across opens. Must match the reader exactly: key 'rsvp:digests', a
+  // JSON-encoded array, newest-first, capped at 100 (see K.digests /
+  // getDigests / setDigests in public/index.html). Writing the legacy
+  // 'localDigests' key here silently dropped every CLI digest once the app
+  // had written its own 'rsvp:digests' store, since getDigests only falls
+  // back to the legacy key when the canonical one is absent.
   try {
-    const stored = JSON.parse(localStorage.getItem('localDigests') || '[]');
-    if (!stored.some(s => s.id === _injectedDigest.id)) {
+    const KEY = 'rsvp:digests';
+    let stored = [];
+    try { const v = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(v)) stored = v; } catch {}
+    if (!stored.some(s => s && s.id === _injectedDigest.id)) {
       stored.unshift(_injectedDigest);
-      localStorage.setItem('localDigests', JSON.stringify(stored.slice(0, 50)));
+      localStorage.setItem(KEY, JSON.stringify(stored.slice(0, 100)));
     }
   } catch {}
 

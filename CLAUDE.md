@@ -16,8 +16,9 @@ Local-first speed-reading app with Dev Digest integration for Claude Code sessio
 | `/diff` | Digest working tree changes (staged + unstaged + untracked) |
 | `/diff main` | Digest current branch vs main |
 | `/diff <branch>` | Digest current branch vs any branch |
+| `digest <path>` (shell, not slash) | Headless CLI at `~/.local/bin/digest`: mirror any text/markdown file into RSVP, no Claude session (`claude-digest.js --file`) |
 
-Digests are saved to the browser's `localStorage` (key `rsvp:digests`). Cloud sync is opt-in via the token and off by default: with `$SYNC_TOKEN` exported, `/digest` and `/diff` automatically push each digest to `focal.wiki/api/digests`; without the token, sync is silently skipped and everything stays local. This is the accumulate-on-computer → review-on-phone flow. The reader's Dev Digest tab has a matching token field to pull synced digests on other devices. See `DIGEST_WORKFLOW.md` for setup.
+Digests are saved to the browser's `localStorage` (key `rsvp:digests`). Cloud sync is **default-on** (since 2026-07-20): whenever `$SYNC_TOKEN` is exported, every digest the CLI renders (`/digest`, `/diff`, `digest <path>`) is pushed to `focal.wiki/api/digests` so it appears in the Dev Digest tab on any connected device (phone included, one-time token connect). This is the accumulate-on-computer → review-on-phone flow. Without the token, sync is silently skipped and everything stays local, so the app remains zero-credential for everyone else. `--no-sync` skips a run. `--phone` optionally also Taildrops the digest HTML to a tailnet device (see DIGEST_WORKFLOW.md).
 
 ## Dev Setup
 
