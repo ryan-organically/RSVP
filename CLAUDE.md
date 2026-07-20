@@ -2,6 +2,14 @@
 
 Local-first speed-reading app with Dev Digest integration for Claude Code sessions.
 
+## This repo is PUBLIC
+
+Everything committed here is world-readable (github.com/ryan-organically/RSVP). Before any commit or push:
+
+- **Scan the outgoing diff for secrets** — tokens, API keys, bearer values, `.env` contents, real contact info. `SYNC_TOKEN` lives only in `~/.bashrc` and Vercel env; its value must never appear in a tracked file (devlogs included — they may describe the token pattern, never the value).
+- **Check sensitive routes/API surface** — any change under `api/` or to sync code must preserve the security contract in Key Rules below: bearer auth via `timingSafeEqual`, token-hash owner namespacing, no unauthenticated or cross-owner read/write paths, no new endpoint that touches the host filesystem or leaks env. Re-read the route's auth path end-to-end before shipping a change to it.
+- Devlogs with sensitive security/architecture details or keys stay out of the repo (see motherboard convention); write them elsewhere or sanitize first.
+
 ## Architecture
 
 - **Frontend:** Monolithic SPA at `public/index.html` (vanilla JS, no framework). All CSS + JS inline.
