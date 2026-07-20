@@ -1063,7 +1063,8 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
   </div>
 
 <!-- ===== LANDING HERO (additive, self-contained) ===== -->
-<section class="lp-hero" id="lp-hero" aria-label="Focal overview">
+<!-- Hidden 2026-07-20 (per Ryan): keep markup + JS contract intact, just don't render -->
+<section class="lp-hero hidden" id="lp-hero" aria-label="Focal overview">
   <!-- dither / noise + radial glow backdrop -->
   <div class="lp-hero-bg" aria-hidden="true">
     <div class="lp-halo lp-halo-a"></div>
@@ -1454,6 +1455,7 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
         <label><input type="checkbox" id="bionicCheck" onchange="setBionic(this.checked)"> Bionic (bold word starts)</label>
         <label><input type="checkbox" id="comfortCheck" onchange="setComfort(this.checked)"> Reading comfort font</label>
         <label><input type="checkbox" id="smartPauseCheck" onchange="setSmartPause(this.checked)"> Pause at paragraphs</label>
+        <label title="Uses your camera to pause when you look away. All analysis stays on this device; nothing is recorded or uploaded."><input type="checkbox" id="gazeCheck" onchange="setGazePause(this.checked)"> Gaze pause (camera, on-device)</label>
         <div class="set-sep"></div>
         <label style="cursor:pointer"><input type="checkbox" id="accelCheck"> Accelerate to <input type="number" id="accelTarget" value="600" min="100" max="1500" step="50"> WPM</label>
         <label style="cursor:pointer"><input type="checkbox" id="ttsCheck"> Read aloud (TTS)</label>
@@ -1505,7 +1507,7 @@ const S = {
   playing: false, timer: null, playGen: 0,
   wpm: 300, fontSize: 64, theme: 'dark', accent: '#22d3ee',
   accelMode: false, accelTarget: 600, accelStart: null, accelDuration: 30,
-  chunk: 1, bionic: false, comfort: false, smartPause: false, wordFont: '',
+  chunk: 1, bionic: false, comfort: false, smartPause: false, gazePause: false, wordFont: '',
   smartResume: true, lastBook: null, preset: '',
   sessionWordsRead: 0, sessionStartTime: null,
   digestMode: false, digestBlocks: [], digestBoundaries: null,
@@ -1660,7 +1662,7 @@ function saveSettings() {
   LS.set(K.settings, {
     wpm: S.wpm, fontSize: S.fontSize, theme: S.theme, accent: S.accent,
     accelMode: S.accelMode, accelTarget: S.accelTarget, chunk: S.chunk,
-    bionic: S.bionic, comfort: S.comfort, smartPause: S.smartPause, smartResume: S.smartResume,
+    bionic: S.bionic, comfort: S.comfort, smartPause: S.smartPause, gazePause: S.gazePause, smartResume: S.smartResume,
     wordFont: S.wordFont, preset: S.preset, lastBook: S.lastBook,
     onboarded: S.onboarded, welcomeSeeded: S.welcomeSeeded, cyanMigrated: S.cyanMigrated,
     dailyGoal: S.dailyGoal || null,
@@ -1678,7 +1680,7 @@ function loadSettings() {
   if (typeof s.accent === 'string') S.accent = s.accent;
   S.accelTarget = num(s.accelTarget, S.accelTarget);
   S.chunk = [1,2,3].includes(s.chunk) ? s.chunk : 1;
-  S.bionic = !!s.bionic; S.comfort = !!s.comfort; S.smartPause = !!s.smartPause;
+  S.bionic = !!s.bionic; S.comfort = !!s.comfort; S.smartPause = !!s.smartPause; S.gazePause = !!s.gazePause;
   S.smartResume = s.smartResume !== false;
   if (typeof s.wordFont === 'string') S.wordFont = s.wordFont;
   if (typeof s.preset === 'string') S.preset = s.preset;
@@ -2262,10 +2264,12 @@ function setPlaying(on) {
     if (!S.sessionStartTime) S.sessionStartTime = Date.now();
     if (S.accelMode) S.accelStart = Date.now();
     if (TTS.enabled) { TTS.stop(); TTS.speakFrom(S.wordIndex); }
+    Gaze.wasGazePaused = false; if (S.gazePause) Gaze.ensure();
     renderFrame(); // clear any peek/countdown frame the instant playback starts
     stopTimer(); scheduleTick();
   } else {
     if (!S.playing) { stopTimer(); return; }
+    Gaze.wasGazePaused = false; // a gaze-triggered pause re-sets this after the call
     S.playing = false; S.playGen++; updatePlayBtn(); stopTimer(); TTS.stop();
     S.accelStart = null;
     showActualWpm();
@@ -2350,6 +2354,98 @@ function setChunk(n) { S.chunk = [1,2,3].includes(n) ? n : 1; document.querySele
 function setBionic(on) { S.bionic = !!on; el('bionicCheck').checked = S.bionic; renderFrame(); saveSettings(); }
 function setComfort(on) { S.comfort = !!on; el('comfortCheck').checked = S.comfort; renderFrame(); saveSettings(); }
 function setSmartPause(on) { S.smartPause = !!on; el('smartPauseCheck').checked = S.smartPause; saveSettings(); }
+
+// ── Gaze pause: opt-in camera attention detection, fully on-device ──
+// Face detection runs locally (MediaPipe, loaded on demand like pdf.js).
+// No frame ever leaves the browser; the camera stops when unused.
+const Gaze = {
+  active: false, loading: false, stream: null, video: null, detector: null,
+  timer: null, miss: 0, hit: 0, wasGazePaused: false, idleTicks: 0,
+  INTERVAL: 250, MISS_PAUSE: 4, HIT_RESUME: 2, YAW_LIMIT: 0.35, IDLE_OFF: 80,
+  async ensure() {
+    if (this.active || this.loading || !S.gazePause) return;
+    this.loading = true;
+    try {
+      if (!this.detector) {
+        const v = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+        const files = await v.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+        this.detector = await v.FaceDetector.createFromOptions(files, {
+          baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite' },
+          runningMode: 'VIDEO', minDetectionConfidence: 0.5,
+        });
+      }
+      this.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' }, audio: false });
+      if (!this.video) {
+        this.video = document.createElement('video');
+        this.video.muted = true; this.video.playsInline = true; this.video.setAttribute('aria-hidden', 'true');
+        this.video.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+        document.body.appendChild(this.video);
+      }
+      this.video.srcObject = this.stream;
+      await this.video.play();
+      this.active = true; this.miss = 0; this.hit = 0; this.idleTicks = 0;
+      this.timer = setInterval(() => this.tick(), this.INTERVAL);
+    } catch (e) {
+      this.stop();
+      S.gazePause = false; const c = el('gazeCheck'); if (c) c.checked = false; saveSettings();
+      showToast(e && e.name === 'NotAllowedError' ? 'Camera permission is needed for gaze pause.' : 'Gaze pause could not start.', 'err', 3200);
+    }
+    this.loading = false;
+  },
+  stop() {
+    clearInterval(this.timer); this.timer = null;
+    if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
+    if (this.video) this.video.srcObject = null;
+    this.active = false; this.wasGazePaused = false; this.miss = 0; this.hit = 0; this.idleTicks = 0;
+  },
+  present() {
+    try {
+      const res = this.detector.detectForVideo(this.video, performance.now());
+      const d = res && res.detections && res.detections[0];
+      if (!d) return false;
+      const k = d.keypoints || [];
+      const rEar = k[4], lEar = k[5], nose = k[2];
+      if (rEar && lEar && nose) {
+        const span = Math.abs(lEar.x - rEar.x) || 1e-6;
+        const off = (nose.x - (rEar.x + lEar.x) / 2) / span;
+        if (Math.abs(off) > this.YAW_LIMIT) return false; // head turned well away
+      }
+      return true;
+    } catch { return true; } // a detector hiccup must never interrupt reading
+  },
+  tick() {
+    if (!this.active) return;
+    if (document.hidden || !this.video || this.video.readyState < 2) return;
+    const reading = el('readerView').classList.contains('active');
+    if (!reading || (!S.playing && !this.wasGazePaused)) {
+      if (++this.idleTicks >= this.IDLE_OFF) this.stop(); // release the camera after ~20s unused
+      return;
+    }
+    this.idleTicks = 0;
+    const here = this.present();
+    if (S.playing) {
+      if (here) { this.miss = 0; return; }
+      if (++this.miss >= this.MISS_PAUSE) {
+        this.miss = 0;
+        setPlaying(false);
+        this.wasGazePaused = true;
+        showToast('Paused. Look back to resume.', '', 1800);
+      }
+    } else if (this.wasGazePaused) {
+      if (!here) { this.hit = 0; return; }
+      if (++this.hit >= this.HIT_RESUME) {
+        this.hit = 0; this.wasGazePaused = false;
+        if (S.smartResume !== false) startCountdown(() => setPlaying(true)); else setPlaying(true);
+      }
+    }
+  },
+};
+function setGazePause(on) {
+  S.gazePause = !!on; const c = el('gazeCheck'); if (c) c.checked = S.gazePause;
+  if (S.gazePause) { Gaze.ensure(); showToast('Gaze pause on. Video never leaves this device.', '', 2400); }
+  else Gaze.stop();
+  saveSettings();
+}
 function togglePeek() {
   if (!S.words.length) return;
   if (S._peek) { S._peek = false; renderFrame(); return; }
@@ -3303,6 +3399,7 @@ lpDemo._init();
   el('wpmSlider').value = S.wpm; el('wpmLabel').textContent = S.wpm;
   el('fontSlider').value = S.fontSize; el('accelTarget').value = S.accelTarget;
   el('bionicCheck').checked = S.bionic; el('comfortCheck').checked = S.comfort; el('smartPauseCheck').checked = S.smartPause;
+  el('gazeCheck').checked = S.gazePause; // camera starts on first play, never at boot
   document.querySelectorAll('#chunkSeg button').forEach(b => b.classList.toggle('active', +b.dataset.chunk === S.chunk));
   setAccent(S.accent); renderPresets();
   TTS.init();

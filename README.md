@@ -16,6 +16,7 @@ Speed read anything. One word at a time, with ORP (Optimal Recognition Point) hi
 - **Reading stats + streaks**, daily goals, and per-book time estimates (all local)
 - **Bionic reading** and a **comfort font** mode, plus **multi-word chunking** (1/2/3 words per flash)
 - **Smart pause** at paragraphs, **peek** (`P`) to re-read the current sentence, and a 3-2-1 **resume countdown**
+- **Gaze pause** — optional webcam attention detection pauses playback when you look away and resumes when you look back; face detection runs entirely on-device, nothing is recorded or uploaded
 - **Highlights** (`H`) and **bookmarks** (`B`) with one-tap jump and Markdown export
 - **Library management** — upload `.txt`/`.md`/`.pdf`, drag-and-drop, or paste text (pasted web HTML is cleaned automatically)
 - **Free Library** — search and download 60,000+ public-domain Project Gutenberg books
@@ -34,7 +35,7 @@ Everything is on-device. There are no accounts and no shared database.
 | Book text | IndexedDB (`rsvp-cache`) |
 | Library, positions, bookmarks, highlights, digests, settings, stats | `localStorage` (`rsvp:*` keys) |
 
-The only network calls are: the Google Fonts and pdf.js CDNs, the Project Gutenberg search API (`gutendex.com`), and the bundled `/api/proxy` function, which downloads Gutenberg book text. The proxy is stateless, allowlisted to `gutenberg.org`, and never touches a database or the filesystem.
+The only network calls are: the Google Fonts and pdf.js CDNs, the Project Gutenberg search API (`gutendex.com`), the MediaPipe CDN (model download only, and only if you enable gaze pause), and the bundled `/api/proxy` function, which downloads Gutenberg book text. The proxy is stateless, allowlisted to `gutenberg.org`, and never touches a database or the filesystem.
 
 **Optional cloud sync:** if you paste a sync token into the Dev Digest tab (or export `SYNC_TOKEN` for the CLI), digests and imported book text also sync through `/api/digests` and `/api/books`, backed by Turso. The token is the whole account: rows are namespaced by a hash of it, requests without it are rejected, and no endpoint can list or read another token's data. Leave the token blank and the app never talks to the sync endpoints at all.
 
