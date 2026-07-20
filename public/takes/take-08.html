@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSVP Reader — Paper Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4ecd8;
+  --surface:#fbf6e7;
+  --surface-2:#efe6cf;
+  --text:#3a342a;
+  --text-soft:#5a5141;
+  --dim:#8a7e6c;
+  --border:rgba(58,52,42,0.15);
+  --border-strong:rgba(58,52,42,0.32);
+  --accent:#e84040;
+  --serif:'Source Serif 4', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --sans:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --paper-noise:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0.23  0 0 0 0 0.20  0 0 0 0 0.16  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+body.light{
+  --bg:#fefcf8;
+  --surface:#ffffff;
+  --surface-2:#f7f2e6;
+  --text:#2a2620;
+  --text-soft:#4a4438;
+  --dim:#9b8f7c;
+  --border:rgba(42,38,32,0.13);
+  --border-strong:rgba(42,38,32,0.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  font-feature-settings:"liga","kern","onum";
+  overflow:hidden;
+  position:relative;
+}
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:var(--paper-noise);
+  background-size:160px 160px;
+  opacity:0.55;
+  mix-blend-mode:multiply;
+  pointer-events:none;
+  z-index:1;
+}
+body.light::before{opacity:0.35}
+
+/* ───── Views ───── */
+.view{display:none;position:relative;z-index:2;height:100vh;overflow:hidden}
+.view.active{display:flex;flex-direction:column}
+.hidden{display:none !important}
+
+/* ═══════════════════════════════════════════
+   LIBRARY VIEW
+   ═══════════════════════════════════════════ */
+#libraryView{overflow-y:auto;padding:0;align-items:stretch}
+#libraryView.active{display:block}
+
+.lib-header{
+  max-width:760px;
+  margin:0 auto;
+  padding:64px 32px 24px;
+  text-align:left;
+  border-bottom:1px solid var(--border);
+}
+.lib-header h1{
+  font-family:var(--serif);
+  font-weight:600;
+  font-size:54px;
+  line-height:1.05;
+  letter-spacing:-0.025em;
+  color:var(--text);
+  margin-bottom:10px;
+}
+.lib-header h1 span{
+  display:inline-block;
+  position:relative;
+  color:var(--accent);
+}
+.lib-header h1 span::after{
+  content:'';
+  position:absolute;
+  right:-6px;top:8px;
+  width:6px;height:6px;
+  background:var(--accent);
+  border-radius:50%;
+}
+.lib-header p{
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:18px;
+  color:var(--text-soft);
+  font-weight:400;
+  max-width:560px;
+  line-height:1.5;
+}
+
+/* Tabs as editorial section markers */
+.tabs{
+  display:flex;
+  gap:0;
+  margin-top:36px;
+  border-top:1px solid var(--border);
+  padding-top:18px;
+}
+.tab{
+  background:none;
+  border:none;
+  font-family:var(--sans);
+  font-size:11px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:0.14em;
+  color:var(--dim);
+  padding:8px 0;
+  margin-right:28px;
+  cursor:pointer;
+  position:relative;
+  transition:color 0.15s ease;
+}
+.tab:hover{color:var(--text-soft)}
+.tab.active{color:var(--text)}
+.tab.active::after{
+  content:'';
+  position:absolute;
+  left:0;right:0;
+  bottom:-19px;
+  height:1px;
+  background:var(--text);
+}
+
+.lib-body{
+  max-width:760px;
+  margin:0 auto;
+  padding:36px 32px 100px;
+}
+
+/* My Books actions */
+#panelMyBooks > div:first-child{margin-bottom:24px !important}
+
+.btn-primary{
+  background:var(--text);
+  color:var(--bg);
+  border:1px solid var(--text);
+  padding:9px 18px;
+  border-radius:3px;
+  font-family:var(--sans);
+  font-size:12px;
+  font-weight:500;
+  letter-spacing:0.04em;
+  cursor:pointer;
+  transition:all 0.15s ease;
+}
+.btn-primary:hover{
+  background:var(--text-soft);
+  border-color:var(--text-soft);
+}
+
+.paste-area, textarea, .search-input, #digestPasteText{
+  width:100%;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:3px;
+  color:var(--text);
+  padding:10px 12px;
+  font-family:var(--sans);
+  font-size:13px;
+  line-height:1.5;
+  outline:none;
+  transition:border-color 0.15s ease;
+  resize:vertical;
+}
+.paste-area:focus, textarea:focus, .search-input:focus, #digestPasteText:focus{
+  border-color:var(--accent);
+}
+
+details summary{
+  font-family:var(--sans);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.12em;
+  color:var(--dim);
+  list-style:none;
+  user-select:none;
+  padding:6px 0;
+}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'+ ';color:var(--accent);font-weight:600}
+details[open] summary::before{content:'− '}
+
+.search-row{
+  display:flex;
+  gap:8px;
+  margin-bottom:20px;
+}
+.search-row .search-input{flex:1}
+
+/* Book list — bookshelf inventory */
+#bookList, #gutenResults, #gutenFeatured, #digestList{
+  display:flex;
+  flex-direction:column;
+}
+
+/* Book row styled by JS — we use child selectors generically */
+#bookList > *, #gutenResults > *, #gutenFeatured > *, #digestList > *{
+  background:transparent;
+  padding:18px 0;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  transition:padding-left 0.18s ease, color 0.15s ease;
+  font-family:var(--serif);
+}
+#bookList > *:hover, #gutenResults > *:hover, #gutenFeatured > *:hover, #digestList > *:hover{
+  padding-left:8px;
+  color:var(--accent);
+}
+
+/* Section headers JS might inject */
+#gutenFeatured h3, #digestList h3{
+  font-family:var(--sans);
+  font-size:11px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:0.14em;
+  color:var(--dim);
+  padding:28px 0 8px;
+  border-bottom:1px solid var(--border-strong);
+  margin-bottom:0;
+}
+
+/* Dev Digest paste form */
+.digest-paste-form{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:3px;
+  padding:10px;
+  margin-bottom:20px;
+}
+.digest-paste-form textarea{
+  background:transparent;
+  border:none;
+  padding:4px 6px;
+}
+.digest-paste-submit{
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  padding:0 14px;
+  border-radius:3px;
+  font-family:var(--sans);
+  font-size:12px;
+  font-weight:500;
+  letter-spacing:0.04em;
+  cursor:pointer;
+  transition:opacity 0.15s ease;
+}
+.digest-paste-submit:hover{opacity:0.88}
+
+/* Accent picker — wax seals */
+.accent-picker{
+  position:fixed;
+  bottom:24px;
+  left:24px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:8px 12px;
+  border-radius:24px;
+  z-index:50;
+  box-shadow:0 1px 0 rgba(58,52,42,0.04);
+}
+.accent-dot{
+  width:14px;height:14px;
+  border-radius:50%;
+  cursor:pointer;
+  border:none;
+  position:relative;
+  transition:transform 0.15s ease;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08);
+}
+.accent-dot:hover{transform:scale(1.15)}
+.accent-dot.active{
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1), 0 0 0 1px var(--bg), 0 0 0 2px var(--text);
+}
+.accent-custom{
+  width:14px;height:14px;
+  border-radius:50%;
+  overflow:hidden;
+  position:relative;
+  cursor:pointer;
+  background:conic-gradient(from 0deg,#e84040,#e88400,#40b860,#4088e8,#a855f7,#e840a0,#e84040);
+}
+.accent-custom input[type=color]{
+  position:absolute;inset:-4px;
+  width:calc(100% + 8px);
+  height:calc(100% + 8px);
+  border:none;
+  background:none;
+  cursor:pointer;
+  opacity:0;
+}
+
+/* Theme fab */
+.theme-fab{
+  position:fixed;
+  top:24px;right:24px;
+  width:36px;height:36px;
+  border-radius:50%;
+  background:var(--surface);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-size:14px;
+  cursor:pointer;
+  z-index:50;
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.15s ease;
+}
+.theme-fab:hover{background:var(--surface-2)}
+
+/* ═══════════════════════════════════════════
+   READER VIEW
+   ═══════════════════════════════════════════ */
+#readerView{height:100vh;overflow:hidden}
+#readerView.active{display:flex;flex-direction:column}
+
+.reader-bar{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:14px 28px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg);
+  flex-shrink:0;
+  z-index:10;
+}
+.reader-bar > button:first-child{
+  background:none;
+  border:none;
+  color:var(--text-soft);
+  font-family:var(--sans);
+  font-size:12px;
+  font-weight:500;
+  cursor:pointer;
+  padding:6px 0;
+  letter-spacing:0.02em;
+}
+.reader-bar > button:first-child:hover{color:var(--accent)}
+
+.current-chapter{
+  background:none;
+  border:none;
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:14px;
+  color:var(--text-soft);
+  cursor:pointer;
+  padding:6px 12px;
+  border-left:1px solid var(--border);
+  max-width:220px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.current-chapter:hover{color:var(--accent)}
+.current-chapter:empty{display:none}
+
+.reader-title{
+  flex:1;
+  font-family:var(--serif);
+  font-size:14px;
+  font-weight:500;
+  color:var(--text);
+  letter-spacing:-0.005em;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.btn-outline{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--text-soft);
+  border-radius:3px;
+  cursor:pointer;
+  font-family:var(--sans);
+  transition:all 0.15s ease;
+}
+.btn-outline:hover{
+  border-color:var(--text);
+  color:var(--text);
+}
+
+/* TOC */
+.toc-toggle{
+  position:absolute;
+  top:72px;left:18px;
+  width:32px;height:32px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:3px;
+  color:var(--text-soft);
+  font-size:14px;
+  cursor:pointer;
+  z-index:20;
+  display:flex;align-items:center;justify-content:center;
+}
+.toc-toggle:hover{color:var(--text);border-color:var(--text)}
+
+.toc-overlay{
+  position:fixed;inset:0;
+  background:rgba(58,52,42,0.35);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.2s ease;
+  z-index:30;
+}
+.toc-overlay.open{opacity:1;pointer-events:auto}
+
+.toc-sidebar{
+  position:fixed;
+  top:0;left:0;
+  height:100vh;
+  width:340px;
+  background:var(--surface);
+  border-right:1px solid var(--border-strong);
+  padding:32px 28px;
+  overflow-y:auto;
+  transform:translateX(-100%);
+  transition:transform 0.25s ease;
+  z-index:40;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.toc-sidebar.open{transform:translateX(0)}
+
+.toc-header{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:8px;
+}
+.toc-title{
+  font-family:var(--serif);
+  font-size:22px;
+  font-weight:600;
+  letter-spacing:-0.01em;
+}
+.toc-count{
+  font-family:var(--sans);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:0.14em;
+  color:var(--dim);
+}
+
+.toc-list{
+  display:flex;
+  flex-direction:column;
+  counter-reset:tocitem;
+}
+.toc-list > *{
+  font-family:var(--serif);
+  font-size:14px;
+  color:var(--text-soft);
+  padding:10px 0 10px 36px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  position:relative;
+  counter-increment:tocitem;
+  line-height:1.4;
+  transition:color 0.15s ease;
+}
+.toc-list > *::before{
+  content:counter(tocitem, upper-roman);
+  position:absolute;
+  left:0;top:10px;
+  font-family:var(--serif);
+  font-size:11px;
+  font-style:italic;
+  color:var(--dim);
+  font-variant-numeric:oldstyle-nums;
+  width:30px;
+  text-align:right;
+  padding-right:8px;
+}
+.toc-list > *:hover{color:var(--accent)}
+.toc-list > *.active{color:var(--text);font-weight:600}
+
+.toc-bookmark-section{
+  margin-top:18px;
+  padding-top:18px;
+  border-top:1px solid var(--border);
+}
+.toc-bookmark-section h4{
+  font-family:var(--sans);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:0.14em;
+  color:var(--dim);
+  font-weight:600;
+  margin-bottom:10px;
+}
+#bookmarkList > *{
+  font-family:var(--serif);
+  font-size:13px;
+  color:var(--text-soft);
+  padding:6px 0;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+}
+#bookmarkList > *:hover{color:var(--accent)}
+.btn-bookmark{
+  margin-top:12px;
+  width:100%;
+  background:transparent;
+  border:1px dashed var(--border-strong);
+  color:var(--text-soft);
+  padding:8px;
+  border-radius:3px;
+  font-family:var(--sans);
+  font-size:11px;
+  letter-spacing:0.06em;
+  cursor:pointer;
+  transition:all 0.15s ease;
+}
+.btn-bookmark:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Reader body & word area */
+.reader-body{
+  flex:1;
+  position:relative;
+  display:flex;
+  overflow:hidden;
+}
+.reader-main{
+  flex:1;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.word-area{
+  flex:1;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  padding:40px 20px;
+}
+
+.block-indicator{
+  position:absolute;
+  top:28px;left:50%;
+  transform:translateX(-50%);
+  font-family:var(--sans);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:0.14em;
+  color:var(--dim);
+  padding:4px 12px;
+  border:1px solid var(--border);
+  border-radius:2px;
+  background:var(--surface);
+}
+.block-label{
+  position:absolute;
+  bottom:200px;
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:13px;
+  color:var(--dim);
+}
+
+.word-display{
+  font-family:var(--serif);
+  font-size:64px;
+  font-weight:400;
+  color:var(--text);
+  letter-spacing:-0.01em;
+  line-height:1;
+  text-align:center;
+  font-feature-settings:"liga","kern","onum";
+  min-height:1.2em;
+  user-select:none;
+}
+.orp{
+  color:var(--accent);
+  font-weight:600;
+}
+
+/* Control strip */
+.control-strip{
+  flex-shrink:0;
+  border-top:1px solid var(--border);
+  padding:16px 32px 18px;
+  background:var(--bg);
+  position:relative;
+  z-index:5;
+}
+
+.progress-bar{
+  height:1px;
+  background:var(--border);
+  position:relative;
+  margin-bottom:14px;
+  overflow:visible;
+}
+.progress-fill{
+  height:100%;
+  background:var(--text);
+  transform-origin:left;
+  transform:scaleX(0);
+  position:absolute;
+  inset:0;
+  transition:transform 0.1s linear;
+}
+.progress-fill::after{
+  content:'';
+  position:absolute;
+  right:0;top:50%;
+  width:6px;height:6px;
+  background:var(--accent);
+  border-radius:50%;
+  transform:translate(50%,-50%);
+}
+
+.strip-row{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  justify-content:space-between;
+}
+.strip-info{
+  font-family:var(--sans);
+  font-size:11px;
+  font-variant-numeric:tabular-nums;
+  color:var(--dim);
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  min-width:80px;
+}
+.strip-btns{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.strip-btn{
+  background:transparent;
+  border:1px solid transparent;
+  color:var(--text-soft);
+  width:34px;height:34px;
+  border-radius:50%;
+  font-size:13px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s ease;
+  font-family:var(--sans);
+}
+.strip-btn:hover{
+  border-color:var(--border);
+  color:var(--text);
+}
+.strip-play{
+  background:var(--text);
+  color:var(--bg);
+  width:42px;height:42px;
+  font-size:14px;
+  border-color:var(--text);
+}
+.strip-play:hover{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+.strip-skip{font-size:11px;color:var(--dim)}
+
+.strip-wpm{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:160px;
+  justify-content:flex-end;
+}
+.strip-wpm-label{
+  font-family:var(--serif);
+  font-size:14px;
+  font-weight:500;
+  font-variant-numeric:tabular-nums;
+  color:var(--text);
+  min-width:34px;
+  text-align:right;
+}
+.strip-slider, #fontSlider{
+  -webkit-appearance:none;appearance:none;
+  background:transparent;
+  height:1px;
+  width:110px;
+  cursor:pointer;
+}
+.strip-slider::-webkit-slider-runnable-track, #fontSlider::-webkit-slider-runnable-track{
+  height:1px;
+  background:var(--border-strong);
+}
+.strip-slider::-moz-range-track, #fontSlider::-moz-range-track{
+  height:1px;
+  background:var(--border-strong);
+}
+.strip-slider::-webkit-slider-thumb, #fontSlider::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:12px;height:12px;
+  border-radius:50%;
+  background:var(--accent);
+  margin-top:-5.5px;
+  cursor:pointer;
+  border:2px solid var(--bg);
+  box-shadow:0 0 0 1px var(--text);
+}
+.strip-slider::-moz-range-thumb, #fontSlider::-moz-range-thumb{
+  width:12px;height:12px;
+  border-radius:50%;
+  background:var(--accent);
+  cursor:pointer;
+  border:2px solid var(--bg);
+  box-shadow:0 0 0 1px var(--text);
+}
+
+/* Settings popover */
+.settings-pop{
+  position:absolute;
+  top:60px;right:24px;
+  background:var(--surface);
+  border:1px solid var(--border-strong);
+  border-radius:3px;
+  padding:18px 18px 14px;
+  z-index:25;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  min-width:260px;
+  box-shadow:0 8px 28px -10px rgba(58,52,42,0.18);
+}
+.settings-pop::before{
+  content:'Settings';
+  position:absolute;
+  top:-9px;left:14px;
+  background:var(--bg);
+  padding:0 8px;
+  font-family:var(--sans);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:0.14em;
+  color:var(--dim);
+}
+.settings-pop label{
+  font-family:var(--sans);
+  font-size:12px;
+  color:var(--text-soft);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.settings-pop input[type=number]{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:2px;
+  color:var(--text);
+  padding:2px 6px;
+  font-family:var(--sans);
+  font-size:12px;
+  width:60px;
+}
+.settings-skip-row{
+  display:flex;
+  gap:8px;
+  border-top:1px solid var(--border);
+  padding-top:10px;
+}
+.settings-skip-row .strip-btn{
+  width:auto;
+  padding:0 12px;
+  border:1px solid var(--border);
+  border-radius:3px;
+  height:30px;
+  font-size:11px;
+}
+
+/* Minimap */
+.minimap{display:none}
+.minimap-viewport{display:none}
+
+/* Toast */
+.toast{
+  position:fixed;
+  top:24px;left:50%;
+  transform:translateX(-50%) translateY(-20px);
+  background:var(--text);
+  color:var(--bg);
+  font-family:var(--sans);
+  font-size:12px;
+  letter-spacing:0.04em;
+  padding:10px 20px;
+  border-radius:3px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.2s ease, transform 0.2s ease;
+  z-index:100;
+}
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+/* Loading overlay */
+.loading-overlay{
+  position:fixed;inset:0;
+  background:rgba(244,236,216,0.9);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:200;
+  font-family:var(--sans);
+  font-size:13px;
+  color:var(--text);
+  gap:10px;
+}
+body.light .loading-overlay{background:rgba(254,252,248,0.92)}
+.spinner{
+  width:28px;height:28px;
+  border:1px solid var(--border);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:10px;border:3px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--dim)}
+
+/* Retina hairlines */
+@media (-webkit-min-device-pixel-ratio:2),(min-resolution:192dpi){
+  .lib-header,.tabs,#bookList > *,#gutenResults > *,#gutenFeatured > *,#digestList > *,
+  .reader-bar,.control-strip,.progress-bar,.toc-header,.toc-list > *,
+  #bookmarkList > *,.block-indicator,.settings-pop,.toc-bookmark-section{
+    border-width:0.5px;
+  }
+}
+
+/* Responsive */
+@media (max-width:680px){
+  .lib-header{padding:40px 20px 18px}
+  .lib-header h1{font-size:40px}
+  .lib-body{padding:24px 20px 80px}
+  .reader-bar{padding:12px 16px;gap:8px}
+  .reader-title{font-size:12px}
+  .word-display{font-size:48px}
+  .control-strip{padding:12px 16px 14px}
+  .strip-wpm{min-width:auto}
+  .strip-slider{width:70px}
+  .toc-sidebar{width:300px;padding:24px 20px}
+}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Loading...</p>
+  <div style="width:200px;height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden"><div id="loadingProgress" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width 0.3s;display:none"></div></div>
+</div>
+
+<!-- ════════ LIBRARY VIEW ════════ -->
+<div id="libraryView" class="view active">
+  <div class="lib-header">
+    <h1><span>R</span>SVP Reader</h1>
+    <p>Speed read anything. One word at a time, as fast as your brain can handle.</p>
+    <div class="tabs">
+      <button class="tab active" id="tabMyBooks" onclick="switchTab('mybooks')">My Books</button>
+      <button class="tab" id="tabFree" onclick="switchTab('free')">Free Library</button>
+      <button class="tab" id="tabDigest" onclick="switchTab('digest')">Dev Digest</button>
+    </div>
+  </div>
+  <div class="lib-body">
+    <!-- My Books panel -->
+    <div id="panelMyBooks">
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="document.getElementById('fileInput').click()">Upload File (.txt .docx .pdf)</button>
+        <input type="file" id="fileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="handleFile(event)">
+      </div>
+      <details style="margin-bottom:20px">
+        <summary style="cursor:pointer;font-size:14px;color:var(--dim);margin-bottom:8px">Paste text directly</summary>
+        <textarea id="pasteArea" class="paste-area" rows="5" placeholder="Paste your book text here..."></textarea>
+        <button class="btn-primary" style="margin-top:8px;display:none" id="pasteBtn" onclick="importPaste()">Import Text</button>
+      </details>
+      <input type="text" class="search-input" id="libFilter" placeholder="Filter books..." style="margin-bottom:12px" oninput="filterLibrary(this.value)">
+      <div id="bookList"></div>
+    </div>
+    <!-- Free Library panel -->
+    <div id="panelFree" class="hidden">
+      <div class="search-row">
+        <input class="search-input" id="gutenSearch" placeholder="Search 60,000+ free books..." onkeydown="if(event.key==='Enter')searchGutenberg()" oninput="if(!this.value.trim()){document.getElementById('gutenResults').innerHTML='';document.getElementById('gutenFeatured').style.display=''}">
+        <button class="btn-primary" onclick="searchGutenberg()">Search</button>
+      </div>
+      <div id="gutenResults"></div>
+      <div id="gutenFeatured"></div>
+    </div>
+    <!-- Dev Digest panel -->
+    <div id="panelDigest" class="hidden">
+      <div class="digest-paste-form open" id="digestPasteForm" style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="digestPasteText" placeholder="Paste dev notes — first line becomes the title, rest become blocks. Tag lines with DONE: HIGH: CRITICAL: INFO: DECIDE:" style="flex:1;min-height:38px;max-height:200px"></textarea>
+        <button class="digest-paste-submit" onclick="submitPastedDigest()" style="white-space:nowrap;height:38px">+ Add</button>
+      </div>
+      <div id="digestList"></div>
+    </div>
+  </div>
+  <div class="accent-picker" id="accentPicker">
+    <div class="accent-dot active" style="background:#e84040" onclick="setAccent('#e84040')" title="Red"></div>
+    <div class="accent-dot" style="background:#e88400" onclick="setAccent('#e88400')" title="Orange"></div>
+    <div class="accent-dot" style="background:#40b860" onclick="setAccent('#40b860')" title="Green"></div>
+    <div class="accent-dot" style="background:#4088e8" onclick="setAccent('#4088e8')" title="Blue"></div>
+    <div class="accent-dot" style="background:#a855f7" onclick="setAccent('#a855f7')" title="Purple"></div>
+    <div class="accent-dot" style="background:#e840a0" onclick="setAccent('#e840a0')" title="Pink"></div>
+    <div class="accent-custom" id="accentCustom" title="Custom color"><input type="color" value="#e84040" id="accentColorInput" oninput="setAccent(this.value)"></div>
+  </div>
+  <button class="theme-fab" onclick="toggleTheme()" id="themeFab1">☀</button>
+</div>
+
+<!-- ════════ READER VIEW ════════ -->
+<div id="readerView" class="view">
+  <div class="reader-bar">
+    <button onclick="goToLibrary()">← Library</button>
+    <button class="current-chapter" id="currentChapter" onclick="toggleTocSidebar()"></button>
+    <span class="reader-title" id="readerBookTitle"></span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" title="Settings">⚙</button>
+      <button class="btn-outline" id="bmHeaderBtn" style="padding:6px 10px;font-size:12px" onclick="addBookmark();this.textContent='Saved!';setTimeout(()=>this.textContent='+BM',1000)" title="Bookmark here">+BM</button>
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="toggleTheme()" id="themeFab2">☀</button>
+    </div>
+  </div>
+
+  <button class="toc-toggle" id="tocToggle" onclick="toggleTocSidebar()">☰</button>
+  <div class="toc-overlay" id="tocOverlay" onclick="toggleTocSidebar()"></div>
+
+  <div class="reader-body">
+    <!-- Left TOC Sidebar -->
+    <aside class="toc-sidebar" id="tocSidebar">
+      <div class="toc-header">
+        <span class="toc-title">Contents</span>
+        <span class="toc-count" id="tocCount"></span>
+      </div>
+      <div class="toc-list" id="tocList"></div>
+      <div class="toc-bookmark-section" id="bookmarkSection">
+        <h4>Bookmarks</h4>
+        <div id="bookmarkList"></div>
+        <button class="btn-bookmark" onclick="addBookmark()">+ Add bookmark here</button>
+      </div>
+
+    </aside>
+
+    <!-- Main reader content -->
+    <div class="reader-main">
+      <div class="word-area" id="wordArea">
+        <div class="block-indicator hidden" id="blockIndicator"></div>
+        <div class="word-display" id="wordDisplay"></div>
+        <div id="keyhint" style="position:absolute;bottom:120px;font-size:12px;color:var(--dim);opacity:0.4;text-align:center;pointer-events:none;line-height:1.8">
+          Space = play/pause &nbsp;|&nbsp; ← → skip &nbsp;|&nbsp; ↑ ↓ speed &nbsp;|&nbsp; B = bookmark<br>
+          [ ] = font size &nbsp;|&nbsp; Home/End = jump start/end &nbsp;|&nbsp; Esc = library<br>
+          Tap word area to play &nbsp;|&nbsp; Swipe to skip
+        </div>
+        <div class="block-label hidden" id="blockLabel"></div>
+      </div>
+
+      <div class="control-strip" id="controlStrip" onclick="event.stopPropagation()">
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-fill" id="progressFill" style="transform:scaleX(0)"></div>
+        </div>
+        <div class="strip-row">
+          <span class="strip-info" id="wordCount">0 / 0</span>
+          <div class="strip-btns">
+            <button class="strip-btn strip-skip" onclick="skip(-50)" title="Back 50">⏪</button>
+            <button class="strip-btn" id="skipBack10" title="Back 10">◁</button>
+            <button class="strip-btn strip-play" id="playBtn">▶</button>
+            <button class="strip-btn" id="skipFwd10" title="Fwd 10">▷</button>
+            <button class="strip-btn strip-skip" onclick="skip(50)" title="Fwd 50">⏩</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="strip-btn strip-bm" onclick="addBookmark()" title="Bookmark">🔖</button>
+            <div class="strip-wpm">
+              <span class="strip-wpm-label" id="wpmLabel">300</span>
+              <input type="range" min="50" max="1200" step="10" value="300" id="wpmSlider" class="strip-slider">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="settingsPopover" class="settings-pop hidden" onclick="event.stopPropagation()">
+        <label>Font size <input type="range" min="28" max="120" value="64" id="fontSlider" style="width:100px"></label>
+        <label style="cursor:pointer"><input type="checkbox" id="accelCheck" style="accent-color:var(--accent)"> Accel to <input type="number" id="accelTarget" value="600" min="100" max="1500" step="50"> WPM</label>
+        <label style="cursor:pointer"><input type="checkbox" id="ttsCheck" style="accent-color:var(--accent)"> Read aloud (TTS)</label>
+        <div id="ttsVoiceRow" class="hidden" style="display:none;gap:6px;align-items:center">
+          <span style="font-size:11px">Voice</span>
+          <select id="ttsVoice" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:12px"></select>
+        </div>
+        <div class="settings-skip-row">
+          <button class="strip-btn" onclick="skip(-50)">⏪ 50</button>
+          <button class="strip-btn" onclick="skip(50)">50 ⏩</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimap (right side, VS Code style) -->
+    <div class="minimap" id="minimap">
+      <canvas id="minimapCanvas" style="opacity:0"></canvas>
+      <div class="minimap-viewport" id="minimapViewport"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="switcher.js" defer></script>
+</body>
+</html>

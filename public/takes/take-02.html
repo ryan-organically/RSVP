@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSVP Reader — Geist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════
+   VERCEL GEIST — Take 02
+   Stark monochrome. Hairline borders. Razor sharp.
+   ════════════════════════════════════════ */
+
+:root {
+  --accent: #e84040;
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #111111;
+  --surface-3: #1a1a1a;
+  --border: #1f1f1f;
+  --border-strong: #2a2a2a;
+  --text: #ffffff;
+  --text-2: #a1a1a1;
+  --text-3: #6b6b6b;
+  --dim: #6b6b6b;
+  --shadow: 0 0 0 1px var(--border);
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --serif: 'Newsreader', 'Iowan Old Style', 'Charter', Georgia, serif;
+}
+
+body.light {
+  --bg: #ffffff;
+  --surface: #fafafa;
+  --surface-2: #f4f4f5;
+  --surface-3: #ededed;
+  --border: #ededed;
+  --border-strong: #d4d4d4;
+  --text: #000000;
+  --text-2: #525252;
+  --text-3: #8e8e8e;
+  --dim: #8e8e8e;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+}
+
+body {
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+.hidden { display: none !important; }
+
+.view { display: none; }
+.view.active { display: flex; flex-direction: column; }
+
+/* ── Toast ───────────────────────────── */
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-150%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--mono);
+  letter-spacing: -0.01em;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Loading Overlay ─────────────────── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  gap: 14px;
+}
+body.light .loading-overlay { background: rgba(255,255,255,0.9); }
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loadingMsg {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-2);
+  letter-spacing: 0.02em;
+}
+
+/* ════════════════════════════════════════
+   LIBRARY VIEW
+   ════════════════════════════════════════ */
+
+#libraryView {
+  min-height: 100vh;
+  padding: 0;
+}
+
+.lib-header {
+  padding: 64px 48px 0;
+  max-width: 1080px;
+  margin: 0 auto;
+  width: 100%;
+  position: relative;
+}
+
+.lib-header h1 {
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  margin-bottom: 18px;
+  color: var(--text);
+}
+.lib-header h1 span {
+  color: var(--accent);
+  display: inline-block;
+  transform: translateX(-2px);
+}
+
+.lib-header p {
+  font-size: 15px;
+  color: var(--text-2);
+  max-width: 520px;
+  line-height: 1.5;
+  margin-bottom: 36px;
+  letter-spacing: -0.005em;
+}
+
+/* Keyboard shortcut chips banner */
+.kbd-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+  align-items: center;
+}
+.kbd-row .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  font-family: var(--mono);
+  margin-right: 4px;
+}
+kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-2);
+  letter-spacing: 0;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.tab {
+  padding: 14px 0;
+  margin-right: 28px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  top: 1px;
+  transition: color 0.15s ease;
+  letter-spacing: -0.005em;
+}
+.tab:hover { color: var(--text-2); }
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* Library body */
+.lib-body {
+  padding: 36px 48px 120px;
+  max-width: 1080px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+}
+
+/* Buttons */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: var(--text);
+  color: var(--bg);
+  border: 1px solid var(--text);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+  font-family: var(--sans);
+  letter-spacing: -0.005em;
+}
+.btn-primary:hover { opacity: 0.85; }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  font-family: var(--sans);
+}
+.btn-outline:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+/* Paste area */
+.paste-area {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.paste-area:focus { border-color: var(--border-strong); }
+
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before {
+  content: "›";
+  display: inline-block;
+  margin-right: 6px;
+  font-family: var(--mono);
+  color: var(--text-3);
+  transition: transform 0.15s ease;
+}
+details[open] > summary::before { transform: rotate(90deg); }
+
+/* Search input */
+.search-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--sans);
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.search-input::placeholder { color: var(--text-3); }
+.search-input:focus { border-color: var(--border-strong); }
+
+.search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.search-row .search-input { flex: 1; }
+
+/* Book list — Vercel project cards */
+#bookList, #gutenResults, #gutenFeatured, #digestList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+#bookList > *, #gutenResults > *, #gutenFeatured > *, #digestList > * {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+#bookList > *:hover, #gutenResults > *:hover, #gutenFeatured > *:hover, #digestList > *:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+/* Digest paste form */
+.digest-paste-form {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+#digestPasteText {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+#digestPasteText:focus { border-color: var(--border-strong); }
+
+.digest-paste-submit {
+  background: var(--text);
+  color: var(--bg);
+  border: 1px solid var(--text);
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: opacity 0.15s ease;
+}
+.digest-paste-submit:hover { opacity: 0.85; }
+
+/* Accent picker — bottom right of library */
+.accent-picker {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  z-index: 50;
+  align-items: center;
+}
+.accent-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.12s ease;
+  position: relative;
+}
+.accent-dot:hover { transform: scale(1.1); }
+.accent-dot.active {
+  border-color: var(--text);
+  outline: 1px solid var(--bg);
+  outline-offset: -3px;
+}
+.accent-custom {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  border: 1px dashed var(--border-strong);
+}
+.accent-custom input[type="color"] {
+  position: absolute;
+  inset: -4px;
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+}
+
+/* Theme FAB — top right */
+.theme-fab {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.theme-fab:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+/* ════════════════════════════════════════
+   READER VIEW
+   ════════════════════════════════════════ */
+
+#readerView {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  flex-direction: column;
+}
+
+/* Reader top bar */
+.reader-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  height: 52px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+.reader-bar > button:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.reader-bar > button:first-child:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.current-chapter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--mono);
+  letter-spacing: -0.005em;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.current-chapter:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+.current-chapter:empty { display: none; }
+
+.reader-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  letter-spacing: -0.005em;
+}
+
+.reader-bar .btn-outline {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+/* TOC sidebar — slides in like Vercel drawer */
+.toc-toggle {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+
+.toc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.toc-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.reader-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.toc-sidebar {
+  position: fixed;
+  top: 52px;
+  left: 0;
+  bottom: 0;
+  width: 320px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transform: translateX(-100%);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.toc-sidebar.open { transform: translateX(0); }
+
+.toc-header {
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.toc-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
+.toc-count {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-3);
+  padding: 2px 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.toc-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+.toc-list > * {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  line-height: 1.4;
+}
+.toc-list > *:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.toc-list > *.active {
+  background: var(--surface-2);
+  color: var(--text);
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+}
+
+.toc-bookmark-section {
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  flex-shrink: 0;
+  max-height: 40%;
+  overflow-y: auto;
+}
+.toc-bookmark-section h4 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  font-family: var(--mono);
+  margin-bottom: 10px;
+}
+#bookmarkList { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+#bookmarkList > * {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  cursor: pointer;
+  font-family: var(--mono);
+}
+#bookmarkList > *:hover { color: var(--text); }
+
+.btn-bookmark {
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-bookmark:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Reader main / word area */
+.reader-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+.word-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 40px 24px 140px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.block-indicator {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.word-display {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 64px;
+  line-height: 1.1;
+  color: var(--text);
+  text-align: center;
+  letter-spacing: -0.02em;
+  max-width: 92%;
+  word-break: break-word;
+}
+.word-display .orp {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.block-label {
+  position: absolute;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+}
+
+/* Control strip — bottom bar */
+.control-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 14px 24px 18px;
+  z-index: 10;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  border-radius: 0;
+  overflow: hidden;
+  margin-bottom: 14px;
+  position: relative;
+}
+.progress-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transition: transform 0.06s linear;
+}
+
+.strip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.strip-info {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-3);
+  letter-spacing: 0;
+  min-width: 90px;
+}
+
+.strip-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.strip-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  font-family: var(--sans);
+  padding: 0;
+  line-height: 1;
+}
+.strip-btn:hover {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.strip-play {
+  width: 44px;
+  height: 36px;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.strip-play:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.strip-skip { font-size: 11px; }
+
+.strip-bm { font-size: 13px; }
+
+.strip-wpm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+  justify-content: flex-end;
+}
+.strip-wpm-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 36px;
+  text-align: right;
+  letter-spacing: -0.01em;
+}
+
+.strip-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.strip-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--text);
+}
+.strip-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--text);
+}
+
+/* Settings popover */
+.settings-pop {
+  position: absolute;
+  top: 60px;
+  right: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 260px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  z-index: 30;
+  font-size: 12px;
+}
+body.light .settings-pop {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+.settings-pop label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: var(--sans);
+}
+.settings-pop input[type="number"] {
+  width: 56px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 2px 6px;
+  font-size: 12px;
+  font-family: var(--mono);
+}
+.settings-pop input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  flex: 1;
+}
+.settings-pop input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.settings-pop input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+.settings-pop input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+.settings-skip-row {
+  display: flex;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+.settings-skip-row .strip-btn {
+  flex: 1;
+  width: auto;
+  height: 28px;
+  font-size: 11px;
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+/* Minimap — hidden in this skin */
+.minimap {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+  .lib-header { padding: 40px 20px 0; }
+  .lib-header h1 { font-size: 48px; }
+  .lib-body { padding: 24px 20px 120px; }
+  .reader-bar { padding: 10px 14px; height: 48px; }
+  .reader-title { display: none; }
+  .toc-sidebar { width: 88%; max-width: 320px; }
+  .word-display { font-size: 48px; }
+  .control-strip { padding: 12px 14px 14px; }
+  .strip-wpm { min-width: 110px; }
+  .strip-slider { width: 70px; }
+  .strip-info { min-width: 60px; font-size: 11px; }
+  .accent-picker { left: 16px; bottom: 16px; }
+  .kbd-row { display: none; }
+}
+
+@media (max-width: 480px) {
+  .lib-header h1 { font-size: 40px; }
+  .word-display { font-size: 40px; }
+  .strip-btns .strip-skip { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Loading...</p>
+  <div style="width:200px;height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden"><div id="loadingProgress" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width 0.3s;display:none"></div></div>
+</div>
+
+<!-- ════════ LIBRARY VIEW ════════ -->
+<div id="libraryView" class="view active">
+  <div class="lib-header">
+    <h1><span>R</span>SVP Reader</h1>
+    <p>Speed read anything. One word at a time, as fast as your brain can handle. Shipped by engineers.</p>
+    <div class="kbd-row">
+      <span class="label">Shortcuts</span>
+      <kbd>Space</kbd>
+      <kbd>← →</kbd>
+      <kbd>↑ ↓</kbd>
+      <kbd>B</kbd>
+      <kbd>Esc</kbd>
+      <kbd>⌘K</kbd>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="tabMyBooks" onclick="switchTab('mybooks')">My Books</button>
+      <button class="tab" id="tabFree" onclick="switchTab('free')">Free Library</button>
+      <button class="tab" id="tabDigest" onclick="switchTab('digest')">Dev Digest</button>
+    </div>
+  </div>
+  <div class="lib-body">
+    <!-- My Books panel -->
+    <div id="panelMyBooks">
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="document.getElementById('fileInput').click()">Upload File (.txt .docx .pdf)</button>
+        <input type="file" id="fileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="handleFile(event)">
+      </div>
+      <details style="margin-bottom:20px">
+        <summary style="cursor:pointer;font-size:13px;color:var(--text-3);margin-bottom:8px;font-family:var(--mono)">Paste text directly</summary>
+        <textarea id="pasteArea" class="paste-area" rows="5" placeholder="Paste your book text here..."></textarea>
+        <button class="btn-primary" style="margin-top:8px;display:none" id="pasteBtn" onclick="importPaste()">Import Text</button>
+      </details>
+      <input type="text" class="search-input" id="libFilter" placeholder="Filter books..." style="margin-bottom:12px" oninput="filterLibrary(this.value)">
+      <div id="bookList"></div>
+    </div>
+    <!-- Free Library panel -->
+    <div id="panelFree" class="hidden">
+      <div class="search-row">
+        <input class="search-input" id="gutenSearch" placeholder="Search 60,000+ free books..." onkeydown="if(event.key==='Enter')searchGutenberg()" oninput="if(!this.value.trim()){document.getElementById('gutenResults').innerHTML='';document.getElementById('gutenFeatured').style.display=''}">
+        <button class="btn-primary" onclick="searchGutenberg()">Search</button>
+      </div>
+      <div id="gutenResults"></div>
+      <div id="gutenFeatured"></div>
+    </div>
+    <!-- Dev Digest panel -->
+    <div id="panelDigest" class="hidden">
+      <div class="digest-paste-form open" id="digestPasteForm" style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="digestPasteText" placeholder="Paste dev notes — first line becomes the title, rest become blocks. Tag lines with DONE: HIGH: CRITICAL: INFO: DECIDE:" style="flex:1;min-height:38px;max-height:200px"></textarea>
+        <button class="digest-paste-submit" onclick="submitPastedDigest()" style="white-space:nowrap;height:38px">+ Add</button>
+      </div>
+      <div id="digestList"></div>
+    </div>
+  </div>
+  <div class="accent-picker" id="accentPicker">
+    <div class="accent-dot active" style="background:#e84040" onclick="setAccent('#e84040')" title="Red"></div>
+    <div class="accent-dot" style="background:#e88400" onclick="setAccent('#e88400')" title="Orange"></div>
+    <div class="accent-dot" style="background:#40b860" onclick="setAccent('#40b860')" title="Green"></div>
+    <div class="accent-dot" style="background:#4088e8" onclick="setAccent('#4088e8')" title="Blue"></div>
+    <div class="accent-dot" style="background:#a855f7" onclick="setAccent('#a855f7')" title="Purple"></div>
+    <div class="accent-dot" style="background:#e840a0" onclick="setAccent('#e840a0')" title="Pink"></div>
+    <div class="accent-custom" id="accentCustom" title="Custom color"><input type="color" value="#e84040" id="accentColorInput" oninput="setAccent(this.value)"></div>
+  </div>
+  <button class="theme-fab" onclick="toggleTheme()" id="themeFab1">☀</button>
+</div>
+
+<!-- ════════ READER VIEW ════════ -->
+<div id="readerView" class="view">
+  <div class="reader-bar">
+    <button onclick="goToLibrary()">← Library</button>
+    <button class="current-chapter" id="currentChapter" onclick="toggleTocSidebar()"></button>
+    <span class="reader-title" id="readerBookTitle"></span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" title="Settings">⚙</button>
+      <button class="btn-outline" id="bmHeaderBtn" style="padding:6px 10px;font-size:12px" onclick="addBookmark();this.textContent='Saved!';setTimeout(()=>this.textContent='+BM',1000)" title="Bookmark here">+BM</button>
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="toggleTheme()" id="themeFab2">☀</button>
+    </div>
+  </div>
+
+  <button class="toc-toggle" id="tocToggle" onclick="toggleTocSidebar()">☰</button>
+  <div class="toc-overlay" id="tocOverlay" onclick="toggleTocSidebar()"></div>
+
+  <div class="reader-body">
+    <!-- Left TOC Sidebar -->
+    <aside class="toc-sidebar" id="tocSidebar">
+      <div class="toc-header">
+        <span class="toc-title">Contents</span>
+        <span class="toc-count" id="tocCount"></span>
+      </div>
+      <div class="toc-list" id="tocList"></div>
+      <div class="toc-bookmark-section" id="bookmarkSection">
+        <h4>Bookmarks</h4>
+        <div id="bookmarkList"></div>
+        <button class="btn-bookmark" onclick="addBookmark()">+ Add bookmark here</button>
+      </div>
+    </aside>
+
+    <!-- Main reader content -->
+    <div class="reader-main">
+      <div class="word-area" id="wordArea">
+        <div class="block-indicator hidden" id="blockIndicator"></div>
+        <div class="word-display" id="wordDisplay"></div>
+        <div id="keyhint" style="position:absolute;bottom:120px;font-size:12px;color:var(--dim);opacity:0.4;text-align:center;pointer-events:none;line-height:1.8">
+          Space = play/pause &nbsp;|&nbsp; ← → skip &nbsp;|&nbsp; ↑ ↓ speed &nbsp;|&nbsp; B = bookmark<br>
+          [ ] = font size &nbsp;|&nbsp; Home/End = jump start/end &nbsp;|&nbsp; Esc = library<br>
+          Tap word area to play &nbsp;|&nbsp; Swipe to skip
+        </div>
+        <div class="block-label hidden" id="blockLabel"></div>
+      </div>
+
+      <div class="control-strip" id="controlStrip" onclick="event.stopPropagation()">
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-fill" id="progressFill" style="transform:scaleX(0)"></div>
+        </div>
+        <div class="strip-row">
+          <span class="strip-info" id="wordCount">0 / 0</span>
+          <div class="strip-btns">
+            <button class="strip-btn strip-skip" onclick="skip(-50)" title="Back 50">⏪</button>
+            <button class="strip-btn" id="skipBack10" title="Back 10">◁</button>
+            <button class="strip-btn strip-play" id="playBtn">▶</button>
+            <button class="strip-btn" id="skipFwd10" title="Fwd 10">▷</button>
+            <button class="strip-btn strip-skip" onclick="skip(50)" title="Fwd 50">⏩</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="strip-btn strip-bm" onclick="addBookmark()" title="Bookmark">🔖</button>
+            <div class="strip-wpm">
+              <span class="strip-wpm-label" id="wpmLabel">300</span>
+              <input type="range" min="50" max="1200" step="10" value="300" id="wpmSlider" class="strip-slider">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="settingsPopover" class="settings-pop hidden" onclick="event.stopPropagation()">
+        <label>Font size <input type="range" min="28" max="120" value="64" id="fontSlider" style="width:100px"></label>
+        <label style="cursor:pointer"><input type="checkbox" id="accelCheck" style="accent-color:var(--accent)"> Accel to <input type="number" id="accelTarget" value="600" min="100" max="1500" step="50"> WPM</label>
+        <label style="cursor:pointer"><input type="checkbox" id="ttsCheck" style="accent-color:var(--accent)"> Read aloud (TTS)</label>
+        <div id="ttsVoiceRow" class="hidden" style="display:none;gap:6px;align-items:center">
+          <span style="font-size:11px">Voice</span>
+          <select id="ttsVoice" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:12px"></select>
+        </div>
+        <div class="settings-skip-row">
+          <button class="strip-btn" onclick="skip(-50)">⏪ 50</button>
+          <button class="strip-btn" onclick="skip(50)">50 ⏩</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimap (hidden in this skin) -->
+    <div class="minimap" id="minimap">
+      <canvas id="minimapCanvas" style="opacity:0"></canvas>
+      <div class="minimap-viewport" id="minimapViewport"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="switcher.js" defer></script>
+</body>
+</html>

@@ -18,6 +18,10 @@ cp social/.env.example social/.env.local   # gitignored
 ## Post
 
 ```bash
+# one-command launch: free platforms + a ready-made caption (preview first)
+node social/post.mjs --video out.mp4 --platforms all-free --preset launch --direct --dry-run
+node social/post.mjs --video out.mp4 --platforms all-free --preset launch --direct   # for real
+
 # dry run first (prints the plan, posts nothing)
 node social/post.mjs --video out.mp4 --caption "Read at 600 wpm. Open source." \
   --platforms x,bluesky,youtube,mastodon --dry-run
@@ -33,7 +37,15 @@ node social/post.mjs --video out.mp4 --caption "..." --platforms bluesky --sched
 
 # list connected Postiz integrations
 node social/post.mjs --list
+
+# list caption presets
+node social/post.mjs --list-presets
 ```
+
+## Shortcuts
+
+- `--platforms all-free` expands to `bluesky,mastodon,youtube` (free, no server). `--platforms all` is the full set.
+- `--preset <name>` fills a ready-made caption. Presets: `launch`, `hook`, `speed`, `focus`, `opensource`, `devdigest` (see `--list-presets`). An explicit `--caption` overrides a preset.
 
 ## Backends
 

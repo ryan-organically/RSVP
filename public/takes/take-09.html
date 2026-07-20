@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSVP — Superhuman</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #000;
+  --surface: #0d0d0d;
+  --surface-2: #141414;
+  --text: #ffffff;
+  --dim: #6b6b6b;
+  --dimmer: #4a4a4a;
+  --border: #1f1f1f;
+  --border-hi: #2a2a2a;
+  --accent: #e84040;
+  --rail-w: 60px;
+  --status-h: 28px;
+  --bar-h: 48px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-size: 14px;
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+body.light {
+  --bg: #ffffff;
+  --surface: #f7f7f7;
+  --surface-2: #efefef;
+  --text: #000000;
+  --dim: #6b6b6b;
+  --dimmer: #a0a0a0;
+  --border: #e4e4e4;
+  --border-hi: #d0d0d0;
+}
+
+button { font-family: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+input, textarea, select { font-family: inherit; color: inherit; }
+
+kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-hi);
+  background: var(--bg);
+  color: var(--text);
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-block;
+  line-height: 1.4;
+}
+
+.hidden { display: none !important; }
+
+/* ============ VIEWS ============ */
+.view { display: none; height: 100vh; }
+.view.active { display: block; }
+
+/* ============ STATUS BAR (bottom) ============ */
+.status-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--status-h);
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 14px;
+  z-index: 50;
+  user-select: none;
+}
+.status-bar .sb-item { display: inline-flex; align-items: center; gap: 6px; }
+.status-bar .sb-sep { color: var(--dimmer); }
+.status-bar .sb-key { color: var(--text); font-weight: 500; }
+.status-bar .sb-right { margin-left: auto; color: var(--text); }
+.status-bar .sb-accent { color: var(--accent); }
+
+/* ============ LIBRARY LAYOUT ============ */
+#libraryView {
+  display: none;
+  grid-template-columns: var(--rail-w) 1fr;
+  height: calc(100vh - var(--status-h));
+}
+#libraryView.active { display: grid; }
+
+/* Hide original lib-header (we use the rail + sticky toolbar) */
+.lib-header { display: none; }
+
+/* Left vertical nav rail */
+.nav-rail {
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 14px 0;
+  gap: 2px;
+  position: relative;
+}
+.nav-rail .brand {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 16px;
+  letter-spacing: 0.08em;
+}
+.tabs { display: contents; }
+.tab {
+  position: relative;
+  height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim);
+  font-size: 16px;
+  border-left: 2px solid transparent;
+  transition: color .12s ease, background .12s ease;
+}
+.tab .glyph {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.tab:hover { color: var(--text); background: var(--surface); }
+.tab.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--surface);
+}
+.tab::after {
+  content: attr(data-key);
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: var(--dimmer);
+  letter-spacing: 0.06em;
+}
+.nav-rail .rail-spacer { flex: 1; }
+.theme-fab {
+  height: 36px;
+  width: 100%;
+  color: var(--dim);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.theme-fab:hover { color: var(--text); }
+
+/* Main column */
+.main-col {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Sticky toolbar */
+.toolbar {
+  height: var(--bar-h);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 16px;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.toolbar h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-transform: none;
+}
+.toolbar .crumb {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+.toolbar .search-wrap {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 4px;
+  min-width: 280px;
+  transition: border-color .12s ease;
+}
+.toolbar .search-wrap:focus-within { border-color: var(--text); }
+.toolbar .search-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+  padding: 4px 0;
+}
+.toolbar .search-wrap input::placeholder { color: var(--dim); }
+.toolbar .search-wrap kbd { font-size: 9px; }
+
+/* Body scroll area */
+.lib-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px 80px;
+}
+.lib-body::-webkit-scrollbar { width: 8px; }
+.lib-body::-webkit-scrollbar-track { background: transparent; }
+.lib-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 0; }
+
+/* Buttons */
+.btn-primary {
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 4px;
+  letter-spacing: -0.005em;
+  transition: opacity .12s ease;
+}
+.btn-primary:hover { opacity: 0.85; }
+
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-hi);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: border-color .12s ease;
+}
+.btn-outline:hover { border-color: var(--text); }
+
+/* My Books panel */
+#panelMyBooks .action-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#panelMyBooks details {
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+}
+#panelMyBooks details summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--dim);
+  user-select: none;
+  list-style: none;
+}
+#panelMyBooks details summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform .12s ease;
+  margin-right: 4px;
+}
+#panelMyBooks details[open] summary::before { content: "▾ "; }
+.paste-area {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-top: 10px;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+}
+.paste-area:focus { border-color: var(--text); }
+
+.search-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+  transition: border-color .12s ease;
+}
+.search-input:focus { border-color: var(--text); }
+.search-input::placeholder { color: var(--dim); }
+
+/* Book list - dense rows */
+#bookList { display: flex; flex-direction: column; }
+#bookList > * {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+  position: relative;
+  transition: background .08s ease, padding .12s ease;
+  font-variant-numeric: tabular-nums;
+}
+#bookList > *:hover {
+  background: var(--surface);
+  padding-left: 16px;
+}
+#bookList > *::after {
+  content: "↵ Open";
+  position: absolute;
+  right: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  opacity: 0;
+  transition: opacity .12s ease;
+  letter-spacing: 0.04em;
+}
+#bookList > *:hover::after { opacity: 1; }
+
+/* Free library / Gutenberg */
+.search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.search-row .search-input { flex: 1; }
+#gutenResults, #gutenFeatured {
+  display: flex;
+  flex-direction: column;
+}
+#gutenResults > *, #gutenFeatured > * {
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .08s ease;
+}
+#gutenResults > *:hover, #gutenFeatured > *:hover { background: var(--surface); }
+
+/* Digest */
+.digest-paste-form {
+  margin-bottom: 16px;
+}
+.digest-paste-form textarea {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+}
+.digest-paste-form textarea:focus { border-color: var(--text); }
+.digest-paste-submit {
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 14px;
+}
+#digestList { display: flex; flex-direction: column; }
+#digestList > * {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+}
+#digestList > *:hover { background: var(--surface); }
+
+/* Accent picker - bottom-floating on library */
+.accent-picker {
+  position: fixed;
+  right: 18px;
+  bottom: 48px;
+  display: flex;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: 4px;
+  padding: 6px 8px;
+  z-index: 40;
+}
+.accent-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--border-hi);
+  cursor: pointer;
+  padding: 0;
+  transition: transform .1s ease, border-color .1s ease;
+}
+.accent-dot:hover { transform: scale(1.15); }
+.accent-dot.active {
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--text) inset;
+}
+.accent-custom {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 1px dashed var(--border-hi);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+.accent-custom input { position: absolute; inset: -4px; border: none; background: none; cursor: pointer; }
+
+/* ============ READER VIEW ============ */
+#readerView {
+  display: none;
+  flex-direction: column;
+  height: calc(100vh - var(--status-h));
+  background: var(--bg);
+  position: relative;
+}
+#readerView.active { display: flex; }
+
+.reader-bar {
+  height: var(--bar-h);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.reader-bar > button:first-child {
+  font-size: 12px;
+  color: var(--dim);
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: color .12s ease;
+}
+.reader-bar > button:first-child:hover { color: var(--text); }
+.current-chapter {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.current-chapter:hover { border-color: var(--text); color: var(--text); }
+.current-chapter:empty { display: none; }
+.reader-title {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* TOC */
+.toc-toggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.toc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 25;
+  display: none;
+}
+.toc-overlay.open { display: block; }
+.toc-sidebar {
+  position: fixed;
+  top: var(--bar-h);
+  bottom: var(--status-h);
+  left: -320px;
+  width: 300px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  z-index: 30;
+  transition: left .2s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.toc-sidebar.open { left: 0; }
+.toc-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.toc-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+}
+.toc-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dimmer);
+}
+.toc-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.toc-list > * {
+  display: block;
+  padding: 6px 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--dim);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: color .1s ease, background .1s ease;
+}
+.toc-list > *:hover { color: var(--text); background: var(--surface-2); }
+.toc-list > *.active, .toc-list > *.current {
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+.toc-bookmark-section {
+  border-top: 1px solid var(--border);
+  padding: 14px 18px;
+}
+.toc-bookmark-section h4 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+#bookmarkList > * {
+  padding: 6px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  cursor: pointer;
+}
+#bookmarkList > *:hover { color: var(--text); }
+.btn-bookmark {
+  margin-top: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 11px;
+  border: 1px solid var(--border-hi);
+  background: transparent;
+  color: var(--text);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.04em;
+  transition: border-color .1s ease;
+}
+.btn-bookmark:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Reader body */
+.reader-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+.reader-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.word-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  padding: 60px 20px 80px;
+}
+.block-indicator {
+  position: absolute;
+  top: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.word-display {
+  font-family: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+  font-size: 64px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-align: center;
+  line-height: 1;
+  min-height: 1.1em;
+}
+.word-display .orp {
+  color: var(--accent);
+  font-weight: 600;
+}
+.block-label {
+  position: absolute;
+  bottom: 100px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+}
+#keyhint {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 10px !important;
+  color: var(--dim) !important;
+}
+
+/* Control strip — minimal, fades out, comes back on mouse move */
+.control-strip {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+  padding: 14px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .25s ease, transform .25s ease;
+  pointer-events: none;
+}
+.reader-main:hover .control-strip,
+.control-strip:focus-within,
+.control-strip:hover {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.progress-bar {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.progress-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .12s linear;
+}
+.strip-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.strip-info {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+}
+.strip-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 auto;
+}
+.strip-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--dim);
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+.strip-btn:hover { color: var(--text); border-color: var(--border-hi); }
+.strip-play {
+  background: var(--accent);
+  color: var(--bg);
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.strip-play:hover { background: var(--accent); color: var(--bg); opacity: 0.85; border-color: transparent; }
+.strip-skip { font-size: 11px; color: var(--dimmer); }
+.strip-bm { font-size: 12px; }
+
+.strip-wpm { display: flex; align-items: center; gap: 8px; }
+.strip-wpm-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.strip-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 2px;
+  background: var(--border-hi);
+  outline: none;
+  border-radius: 0;
+}
+.strip-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.strip-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  background: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+/* Settings popover */
+.settings-pop {
+  position: absolute;
+  top: calc(var(--bar-h) + 8px);
+  right: 16px;
+  background: var(--bg);
+  border: 1px solid var(--text);
+  border-radius: 4px;
+  padding: 14px 16px;
+  min-width: 280px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+body.light .settings-pop { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.settings-pop label {
+  font-size: 12px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.settings-pop input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  background: var(--border-hi);
+  flex: 1;
+}
+.settings-pop input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.settings-pop input[type="number"] {
+  width: 60px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 3px 6px;
+  font-size: 12px;
+  outline: none;
+}
+.settings-pop input[type="number"]:focus { border-color: var(--text); }
+.settings-pop input[type="checkbox"] { accent-color: var(--accent); }
+.settings-skip-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.settings-skip-row .strip-btn { width: auto; padding: 0 8px; font-size: 11px; border: 1px solid var(--border-hi); }
+
+/* Minimap - hidden in this design */
+.minimap { display: none; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: var(--surface);
+  border: 1px solid var(--text);
+  color: var(--text);
+  padding: 8px 16px;
+  font-size: 12px;
+  border-radius: 4px;
+  z-index: 100;
+  font-family: 'JetBrains Mono', monospace;
+  transition: transform .25s ease;
+  pointer-events: none;
+  letter-spacing: 0.02em;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+body.light .loading-overlay { background: rgba(255,255,255,0.92); }
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border-hi);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loadingMsg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+/* Section header (inside lib body) */
+.sec-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcut-hint {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+@media (max-width: 720px) {
+  :root { --rail-w: 48px; }
+  .toolbar .search-wrap { min-width: 140px; }
+  .toc-toggle { display: block; }
+  .word-display { font-size: 48px; }
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Loading...</p>
+  <div style="width:200px;height:2px;background:var(--border);margin-top:8px;overflow:hidden"><div id="loadingProgress" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s;display:none"></div></div>
+</div>
+
+<!-- ════════ LIBRARY VIEW ════════ -->
+<div id="libraryView" class="view active">
+
+  <!-- Vertical icon rail -->
+  <nav class="nav-rail" aria-label="Sections">
+    <div class="brand">RSVP</div>
+    <button class="tab active" id="tabMyBooks" onclick="switchTab('mybooks')" title="My Books — G then M" data-key="GM">
+      <span class="glyph">[M]</span>
+    </button>
+    <button class="tab" id="tabFree" onclick="switchTab('free')" title="Free Library — G then F" data-key="GF">
+      <span class="glyph">[F]</span>
+    </button>
+    <button class="tab" id="tabDigest" onclick="switchTab('digest')" title="Dev Digest — G then D" data-key="GD">
+      <span class="glyph">[D]</span>
+    </button>
+    <div class="rail-spacer"></div>
+    <button class="theme-fab" onclick="toggleTheme()" id="themeFab1" title="Toggle theme">☀</button>
+  </nav>
+
+  <!-- Main column -->
+  <div class="main-col">
+    <div class="toolbar">
+      <span class="crumb" id="sectionLabel">MY BOOKS</span>
+      <h2 id="sectionTitle">Library</h2>
+      <div class="search-wrap">
+        <input type="text" id="libFilter" placeholder="Filter books..." oninput="filterLibrary(this.value)">
+        <kbd>/</kbd>
+      </div>
+    </div>
+
+    <div class="lib-body">
+
+      <!-- My Books panel -->
+      <div id="panelMyBooks">
+        <div class="sec-title">Your library</div>
+        <div class="action-row">
+          <button class="btn-primary" onclick="document.getElementById('fileInput').click()">Upload File <kbd style="margin-left:6px;border-color:rgba(0,0,0,0.2)">U</kbd></button>
+          <input type="file" id="fileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="handleFile(event)">
+          <span class="shortcut-hint"><kbd>.txt</kbd><kbd>.docx</kbd><kbd>.pdf</kbd></span>
+        </div>
+        <details>
+          <summary>Paste text directly</summary>
+          <textarea id="pasteArea" class="paste-area" rows="5" placeholder="Paste your book text here..."></textarea>
+          <button class="btn-primary" style="margin-top:10px;display:none" id="pasteBtn" onclick="importPaste()">Import Text</button>
+        </details>
+        <div id="bookList"></div>
+      </div>
+
+      <!-- Free Library panel -->
+      <div id="panelFree" class="hidden">
+        <div class="sec-title">Free library · Project Gutenberg</div>
+        <div class="search-row">
+          <input class="search-input" id="gutenSearch" placeholder="Search 60,000+ free books..." onkeydown="if(event.key==='Enter')searchGutenberg()" oninput="if(!this.value.trim()){document.getElementById('gutenResults').innerHTML='';document.getElementById('gutenFeatured').style.display=''}">
+          <button class="btn-primary" onclick="searchGutenberg()">Search</button>
+        </div>
+        <div id="gutenResults"></div>
+        <div id="gutenFeatured"></div>
+      </div>
+
+      <!-- Dev Digest panel -->
+      <div id="panelDigest" class="hidden">
+        <div class="sec-title">Dev digest · session notes</div>
+        <div class="digest-paste-form open" id="digestPasteForm" style="display:flex;gap:8px;align-items:flex-start">
+          <textarea id="digestPasteText" placeholder="Paste dev notes — first line becomes the title, rest become blocks. Tag lines with DONE: HIGH: CRITICAL: INFO: DECIDE:" style="flex:1;min-height:38px;max-height:200px"></textarea>
+          <button class="digest-paste-submit" onclick="submitPastedDigest()" style="white-space:nowrap;height:38px">+ Add</button>
+        </div>
+        <div id="digestList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Accent picker (floating) -->
+  <div class="accent-picker" id="accentPicker">
+    <div class="accent-dot active" style="background:#e84040" onclick="setAccent('#e84040')" title="Red"></div>
+    <div class="accent-dot" style="background:#e88400" onclick="setAccent('#e88400')" title="Orange"></div>
+    <div class="accent-dot" style="background:#40b860" onclick="setAccent('#40b860')" title="Green"></div>
+    <div class="accent-dot" style="background:#4088e8" onclick="setAccent('#4088e8')" title="Blue"></div>
+    <div class="accent-dot" style="background:#a855f7" onclick="setAccent('#a855f7')" title="Purple"></div>
+    <div class="accent-dot" style="background:#e840a0" onclick="setAccent('#e840a0')" title="Pink"></div>
+    <div class="accent-custom" id="accentCustom" title="Custom color"><input type="color" value="#e84040" id="accentColorInput" oninput="setAccent(this.value)"></div>
+  </div>
+
+</div>
+
+<!-- ════════ READER VIEW ════════ -->
+<div id="readerView" class="view">
+  <div class="reader-bar">
+    <button onclick="goToLibrary()" title="Back · Esc">← Library</button>
+    <button class="current-chapter" id="currentChapter" onclick="toggleTocSidebar()"></button>
+    <span class="reader-title" id="readerBookTitle"></span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" title="Settings">⚙</button>
+      <button class="btn-outline" id="bmHeaderBtn" style="padding:6px 10px;font-size:12px" onclick="addBookmark();this.textContent='Saved!';setTimeout(()=>this.textContent='+BM',1000)" title="Bookmark here">+BM</button>
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="toggleTheme()" id="themeFab2">☀</button>
+    </div>
+  </div>
+
+  <button class="toc-toggle" id="tocToggle" onclick="toggleTocSidebar()">☰</button>
+  <div class="toc-overlay" id="tocOverlay" onclick="toggleTocSidebar()"></div>
+
+  <div class="reader-body">
+    <!-- Left TOC Sidebar -->
+    <aside class="toc-sidebar" id="tocSidebar">
+      <div class="toc-header">
+        <span class="toc-title">Contents</span>
+        <span class="toc-count" id="tocCount"></span>
+      </div>
+      <div class="toc-list" id="tocList"></div>
+      <div class="toc-bookmark-section" id="bookmarkSection">
+        <h4>Bookmarks</h4>
+        <div id="bookmarkList"></div>
+        <button class="btn-bookmark" onclick="addBookmark()">+ Add bookmark here</button>
+      </div>
+    </aside>
+
+    <!-- Main reader content -->
+    <div class="reader-main">
+      <div class="word-area" id="wordArea">
+        <div class="block-indicator hidden" id="blockIndicator"></div>
+        <div class="word-display" id="wordDisplay"></div>
+        <div id="keyhint" style="position:absolute;bottom:120px;font-size:12px;color:var(--dim);opacity:0.4;text-align:center;pointer-events:none;line-height:1.8">
+          <kbd>SPACE</kbd> play &nbsp; <kbd>←</kbd><kbd>→</kbd> skip &nbsp; <kbd>↑</kbd><kbd>↓</kbd> speed &nbsp; <kbd>B</kbd> bookmark<br>
+          <kbd>[</kbd><kbd>]</kbd> font &nbsp; <kbd>HOME</kbd><kbd>END</kbd> jump &nbsp; <kbd>ESC</kbd> library
+        </div>
+        <div class="block-label hidden" id="blockLabel"></div>
+      </div>
+
+      <div class="control-strip" id="controlStrip" onclick="event.stopPropagation()">
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-fill" id="progressFill" style="transform:scaleX(0)"></div>
+        </div>
+        <div class="strip-row">
+          <span class="strip-info" id="wordCount">0 / 0</span>
+          <div class="strip-btns">
+            <button class="strip-btn strip-skip" onclick="skip(-50)" title="Back 50">⏪</button>
+            <button class="strip-btn" id="skipBack10" title="Back 10">◁</button>
+            <button class="strip-btn strip-play" id="playBtn">▶</button>
+            <button class="strip-btn" id="skipFwd10" title="Fwd 10">▷</button>
+            <button class="strip-btn strip-skip" onclick="skip(50)" title="Fwd 50">⏩</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="strip-btn strip-bm" onclick="addBookmark()" title="Bookmark · B">🔖</button>
+            <div class="strip-wpm">
+              <span class="strip-wpm-label" id="wpmLabel">300</span>
+              <input type="range" min="50" max="1200" step="10" value="300" id="wpmSlider" class="strip-slider">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:0.06em">WPM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="settingsPopover" class="settings-pop hidden" onclick="event.stopPropagation()">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:var(--dim);margin-bottom:4px">Settings</div>
+        <label>Font size <input type="range" min="28" max="120" value="64" id="fontSlider" style="width:100px"></label>
+        <label style="cursor:pointer"><input type="checkbox" id="accelCheck"> Accel to <input type="number" id="accelTarget" value="600" min="100" max="1500" step="50"> WPM</label>
+        <label style="cursor:pointer"><input type="checkbox" id="ttsCheck"> Read aloud (TTS)</label>
+        <div id="ttsVoiceRow" class="hidden" style="display:none;gap:6px;align-items:center">
+          <span style="font-size:11px">Voice</span>
+          <select id="ttsVoice" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:12px"></select>
+        </div>
+        <div class="settings-skip-row">
+          <button class="strip-btn" onclick="skip(-50)">⏪ 50</button>
+          <button class="strip-btn" onclick="skip(50)">50 ⏩</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimap (hidden) -->
+    <div class="minimap" id="minimap">
+      <canvas id="minimapCanvas" style="opacity:0"></canvas>
+      <div class="minimap-viewport" id="minimapViewport"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Status bar (vim/Superhuman style) -->
+<div class="status-bar">
+  <span class="sb-item"><kbd>⌘K</kbd> <span>Command palette</span></span>
+  <span class="sb-sep">·</span>
+  <span class="sb-item"><span class="sb-key">J</span><span class="sb-key">K</span> navigate</span>
+  <span class="sb-sep">·</span>
+  <span class="sb-item"><span class="sb-key">E</span> read</span>
+  <span class="sb-sep">·</span>
+  <span class="sb-item"><span class="sb-key">/</span> filter</span>
+  <span class="sb-right"><span class="sb-accent">●</span> <span id="statusWpm">300</span> wpm</span>
+</div>
+
+<script>
+// Sync section label with active tab (cosmetic only)
+(function(){
+  const labels = {
+    mybooks: ['MY BOOKS', 'Library'],
+    free: ['FREE LIBRARY', 'Project Gutenberg'],
+    digest: ['DEV DIGEST', 'Session notes']
+  };
+  const origSwitchTab = window.switchTab;
+  function applyLabel(tab) {
+    const l = labels[tab]; if (!l) return;
+    const a = document.getElementById('sectionLabel');
+    const b = document.getElementById('sectionTitle');
+    if (a) a.textContent = l[0];
+    if (b) b.textContent = l[1];
+  }
+  const wait = setInterval(() => {
+    if (typeof window.switchTab === 'function') {
+      clearInterval(wait);
+      const orig = window.switchTab;
+      window.switchTab = function(tab) { orig(tab); applyLabel(tab); };
+    }
+  }, 50);
+  // Mirror wpm to status bar
+  const slider = document.getElementById('wpmSlider');
+  const out = document.getElementById('statusWpm');
+  if (slider && out) {
+    slider.addEventListener('input', () => { out.textContent = slider.value; });
+  }
+})();
+</script>
+
+<script src="app.js"></script>
+<script src="switcher.js" defer></script>
+</body>
+</html>

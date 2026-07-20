@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSVP Reader — Take 10 — Material You</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..800&family=Roboto+Serif:opsz,wght@8..144,400..700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   MATERIAL YOU / MATERIAL 3 — Take 10
+   Tonal palette derived from --accent. Dark default.
+   ============================================================ */
+
+:root {
+  --accent: #e84040;
+  --accent-on: #ffffff;
+  --accent-container: color-mix(in srgb, var(--accent) 24%, #2b2930);
+  --accent-on-container: color-mix(in srgb, var(--accent) 80%, #ffffff);
+
+  /* Dark Material You tonal surfaces */
+  --bg: #1c1b1f;
+  --surface-1: #2b2930;
+  --surface-2: #322f37;
+  --surface-3: #383541;
+  --surface-4: #3f3b48;
+  --surface-5: #45424f;
+  --text: #e6e1e5;
+  --dim: #cac4d0;
+  --on-surface-variant: #79747e;
+  --outline: #938f99;
+  --outline-variant: #49454f;
+  --border: #49454f;
+  --scrim: rgba(0,0,0,0.55);
+
+  /* State layer opacities */
+  --state-hover: 0.08;
+  --state-focus: 0.12;
+  --state-pressed: 0.16;
+
+  /* Shape scale */
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-xl: 28px;
+  --shape-full: 999px;
+
+  /* Elevation tones */
+  --elev-1: 0 1px 2px rgba(0,0,0,0.30), 0 1px 3px 1px rgba(0,0,0,0.15);
+  --elev-2: 0 1px 2px rgba(0,0,0,0.30), 0 2px 6px 2px rgba(0,0,0,0.15);
+  --elev-3: 0 1px 3px rgba(0,0,0,0.30), 0 4px 8px 3px rgba(0,0,0,0.15);
+  --elev-4: 0 2px 3px rgba(0,0,0,0.30), 0 6px 10px 4px rgba(0,0,0,0.15);
+  --elev-5: 0 4px 4px rgba(0,0,0,0.30), 0 8px 12px 6px rgba(0,0,0,0.15);
+}
+
+body.light {
+  --accent-container: color-mix(in srgb, var(--accent) 18%, #fff8fb);
+  --accent-on-container: color-mix(in srgb, var(--accent) 70%, #1c1b1f);
+  --bg: #fef7ff;
+  --surface-1: #fff8fb;
+  --surface-2: #f5eef7;
+  --surface-3: #efe9f1;
+  --surface-4: #ebe3ed;
+  --surface-5: #e7dee9;
+  --text: #1c1b1f;
+  --dim: #49454f;
+  --on-surface-variant: #79747e;
+  --outline: #79747e;
+  --outline-variant: #cac4d0;
+  --border: #cac4d0;
+  --scrim: rgba(0,0,0,0.35);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Roboto Flex', 'Google Sans Text', system-ui, sans-serif;
+  font-variation-settings: "wdth" 100, "GRAD" 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+button { background: none; border: none; cursor: pointer; }
+
+/* ─── Views ─── */
+.view { display: none; }
+.view.active { display: flex; flex-direction: column; min-height: 100vh; }
+.hidden { display: none !important; }
+
+/* ─── Toast ─── */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  background: var(--surface-5);
+  color: var(--text);
+  padding: 14px 22px;
+  border-radius: var(--shape-xs);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--elev-3);
+  z-index: 9999;
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+  max-width: 560px;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ─── Loading Overlay ─── */
+.loading-overlay {
+  position: fixed; inset: 0;
+  background: var(--scrim);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+  z-index: 10000;
+  color: var(--text);
+}
+.spinner {
+  width: 48px; height: 48px;
+  border: 4px solid var(--surface-3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════
+   LIBRARY VIEW — Material You shell
+   ═══════════════════════════════════════════════ */
+
+#libraryView {
+  background:
+    radial-gradient(ellipse 800px 500px at 10% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%),
+    radial-gradient(ellipse 700px 400px at 110% 110%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
+    var(--bg);
+  padding: 0 0 120px;
+}
+
+/* Large top app bar */
+.lib-header {
+  padding: 56px 24px 0;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.lib-header h1 {
+  font-family: 'Roboto Flex', 'Google Sans', sans-serif;
+  font-size: clamp(36px, 5vw, 57px);
+  font-weight: 400;
+  font-variation-settings: "wdth" 110, "GRAD" 0;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  line-height: 1.1;
+  margin-bottom: 12px;
+}
+.lib-header h1 span {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.lib-header p {
+  font-size: 16px;
+  color: var(--on-surface-variant);
+  margin-bottom: 32px;
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+/* Material 3 primary tabs with sliding indicator */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-2);
+  padding: 4px;
+  border-radius: var(--shape-full);
+  width: fit-content;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.tab {
+  position: relative;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  border-radius: var(--shape-full);
+  color: var(--dim);
+  background: transparent;
+  transition: color 0.2s, background 0.2s;
+  overflow: hidden;
+  z-index: 1;
+}
+.tab::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: currentColor;
+  opacity: 0;
+  border-radius: inherit;
+  transition: opacity 0.15s;
+  z-index: -1;
+}
+.tab:hover::before { opacity: var(--state-hover); }
+.tab:focus-visible::before { opacity: var(--state-focus); }
+.tab:active::before { opacity: var(--state-pressed); }
+
+.tab.active {
+  background: var(--accent-container);
+  color: var(--accent-on-container);
+}
+
+/* Library body */
+.lib-body {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ─── Buttons (Material 3) ─── */
+.btn-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  min-height: 40px;
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  border-radius: var(--shape-full);
+  transition: box-shadow 0.2s;
+  overflow: hidden;
+}
+.btn-primary::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--accent-on);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { box-shadow: var(--elev-1); }
+.btn-primary:hover::before { opacity: var(--state-hover); }
+.btn-primary:focus-visible::before { opacity: var(--state-focus); }
+.btn-primary:active::before { opacity: var(--state-pressed); }
+
+.btn-outline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 22px;
+  min-height: 40px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-full);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.btn-outline::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.btn-outline:hover::before { opacity: var(--state-hover); }
+.btn-outline:focus-visible::before { opacity: var(--state-focus); }
+.btn-outline:active::before { opacity: var(--state-pressed); }
+
+/* ─── Inputs ─── */
+.search-input, .paste-area, input[type="text"], input[type="number"], textarea, select {
+  width: 100%;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: var(--shape-sm);
+  padding: 14px 16px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.search-input:focus, .paste-area:focus, textarea:focus, input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--accent);
+  background: var(--surface-3);
+}
+.search-input::placeholder, textarea::placeholder, input::placeholder {
+  color: var(--on-surface-variant);
+}
+.paste-area {
+  resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+/* Search row */
+.search-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.search-row .search-input { flex: 1; }
+
+/* ─── Book list (list items) ─── */
+#bookList, #digestList, #gutenResults, #gutenFeatured {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#bookList > *, #digestList > *, #gutenResults > *, #gutenFeatured > * {
+  position: relative;
+  background: var(--surface-2);
+  border-radius: var(--shape-lg);
+  padding: 18px 20px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  overflow: hidden;
+  color: var(--text);
+}
+#bookList > *::before, #digestList > *::before, #gutenResults > *::before, #gutenFeatured > *::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--text);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+#bookList > *:hover::before, #digestList > *:hover::before,
+#gutenResults > *:hover::before, #gutenFeatured > *:hover::before { opacity: var(--state-hover); }
+#bookList > *:active::before, #digestList > *:active::before { opacity: var(--state-pressed); }
+
+#bookList > *::after {
+  content: "📖";
+  position: absolute;
+  left: 20px;
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-container);
+  border-radius: var(--shape-full);
+  color: var(--accent-on-container);
+}
+#bookList > * { padding-left: 76px; }
+
+/* Paste form for digests */
+.digest-paste-form {
+  background: var(--surface-2);
+  border-radius: var(--shape-lg);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.digest-paste-form textarea {
+  background: var(--surface-1);
+  border-radius: var(--shape-md);
+}
+.digest-paste-submit {
+  position: relative;
+  padding: 0 20px;
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: var(--shape-full);
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+}
+.digest-paste-submit::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--accent-on);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.digest-paste-submit:hover::before { opacity: var(--state-hover); }
+.digest-paste-submit:active::before { opacity: var(--state-pressed); }
+
+details summary {
+  list-style: none;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border-radius: var(--shape-md);
+  font-weight: 500;
+  color: var(--dim);
+  transition: background 0.2s;
+}
+details summary::-webkit-details-marker { display: none; }
+details summary:hover { background: var(--surface-3); }
+details[open] summary { margin-bottom: 12px; }
+
+/* ─── Accent picker (Material chips with state layer) ─── */
+.accent-picker {
+  position: fixed;
+  bottom: 32px;
+  left: 32px;
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-3);
+  border-radius: var(--shape-full);
+  box-shadow: var(--elev-2);
+  z-index: 100;
+  align-items: center;
+}
+.accent-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s;
+  border: 2px solid transparent;
+}
+.accent-dot::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.accent-dot:hover::after { opacity: var(--state-hover); }
+.accent-dot.active {
+  border-color: var(--text);
+  transform: scale(1.1);
+}
+.accent-dot.active::before {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.accent-custom {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: conic-gradient(red, orange, yellow, green, blue, indigo, violet, red);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.accent-custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+/* ─── Theme FAB ─── */
+.theme-fab {
+  position: fixed;
+  bottom: 32px;
+  left: 220px;
+  width: 56px; height: 56px;
+  border-radius: var(--shape-lg);
+  background: var(--surface-3);
+  color: var(--accent);
+  font-size: 22px;
+  box-shadow: var(--elev-3);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.2s, transform 0.2s;
+  position: relative;
+}
+.theme-fab::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--accent);
+  opacity: 0;
+  border-radius: inherit;
+  transition: opacity 0.15s;
+}
+.theme-fab:hover { box-shadow: var(--elev-4); }
+.theme-fab:hover::before { opacity: var(--state-hover); }
+.theme-fab:active::before { opacity: var(--state-pressed); }
+
+/* Floating Action Button — Library Upload (extended FAB, bottom-left to avoid switcher) */
+.upload-fab {
+  position: fixed;
+  bottom: 32px;
+  left: 290px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 22px;
+  height: 56px;
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  border-radius: var(--shape-lg);
+  box-shadow: var(--elev-3);
+  z-index: 100;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.upload-fab::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--accent-on);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.upload-fab:hover { box-shadow: var(--elev-4); }
+.upload-fab:hover::before { opacity: var(--state-hover); }
+.upload-fab:active::before { opacity: var(--state-pressed); }
+.upload-fab .fab-icon {
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════
+   READER VIEW
+   ═══════════════════════════════════════════════ */
+
+#readerView {
+  background: var(--bg);
+  padding: 0;
+}
+#readerView.active {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Top app bar (Material 3 center-aligned-ish) */
+.reader-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--surface-1);
+  min-height: 64px;
+  border-bottom: 1px solid var(--outline-variant);
+  position: relative;
+  z-index: 10;
+}
+
+.reader-bar > button:first-child {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  font-size: 18px;
+  position: relative;
+  overflow: hidden;
+  font-weight: 500;
+}
+.reader-bar > button:first-child::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--text);
+  opacity: 0;
+  border-radius: inherit;
+  transition: opacity 0.15s;
+}
+.reader-bar > button:first-child:hover::before { opacity: var(--state-hover); }
+
+.current-chapter {
+  position: relative;
+  padding: 8px 16px;
+  background: var(--surface-3);
+  border-radius: var(--shape-full);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.current-chapter::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--text);
+  opacity: 0;
+  border-radius: inherit;
+  transition: opacity 0.15s;
+}
+.current-chapter:hover::before { opacity: var(--state-hover); }
+.current-chapter:empty { display: none; }
+
+.reader-title {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 500;
+  font-family: 'Roboto Flex', 'Google Sans', sans-serif;
+  font-variation-settings: "wdth" 105;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-bar .btn-outline {
+  min-height: 40px;
+  width: 40px;
+  padding: 0 !important;
+  font-size: 14px !important;
+  border-radius: 50%;
+  border-color: var(--outline-variant);
+  color: var(--text);
+}
+
+/* TOC toggle */
+.toc-toggle {
+  position: fixed;
+  top: 80px;
+  left: 16px;
+  width: 48px; height: 48px;
+  border-radius: var(--shape-lg);
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 20px;
+  box-shadow: var(--elev-2);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.toc-toggle::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--text);
+  opacity: 0;
+  border-radius: inherit;
+  transition: opacity 0.15s;
+}
+.toc-toggle:hover::before { opacity: var(--state-hover); }
+
+.toc-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.toc-overlay.open { opacity: 1; pointer-events: auto; }
+
+/* Reader body grid */
+.reader-body {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Navigation drawer (TOC) */
+.toc-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: -360px;
+  width: 360px;
+  background: var(--surface-2);
+  border-top-right-radius: var(--shape-xl);
+  border-bottom-right-radius: var(--shape-xl);
+  z-index: 70;
+  padding: 28px 16px;
+  overflow-y: auto;
+  transition: left 0.3s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: var(--elev-3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toc-sidebar.open { left: 0; }
+
+.toc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 16px 16px;
+}
+.toc-title {
+  font-family: 'Roboto Flex', 'Google Sans', sans-serif;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+}
+.toc-count {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toc-list > * {
+  position: relative;
+  padding: 14px 16px;
+  border-radius: var(--shape-full);
+  font-size: 14px;
+  color: var(--dim);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.2s, color 0.2s;
+}
+.toc-list > *::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: currentColor;
+  opacity: 0;
+  border-radius: inherit;
+  transition: opacity 0.15s;
+}
+.toc-list > *:hover::before { opacity: var(--state-hover); }
+.toc-list > *.active {
+  background: var(--accent-container);
+  color: var(--accent-on-container);
+  font-weight: 500;
+}
+
+.toc-bookmark-section {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--outline-variant);
+}
+.toc-bookmark-section h4 {
+  padding: 0 16px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.btn-bookmark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 0px);
+  padding: 12px 22px;
+  margin-top: 8px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-full);
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+}
+.btn-bookmark::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.btn-bookmark:hover::before { opacity: var(--state-hover); }
+.btn-bookmark:active::before { opacity: var(--state-pressed); }
+
+/* Reader main area */
+.reader-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 900px 600px at 50% 30%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%),
+    var(--bg);
+}
+
+/* Word area — Material card */
+.word-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 32px 24px 180px;
+  cursor: pointer;
+}
+
+.block-indicator {
+  margin-bottom: 24px;
+  padding: 6px 16px;
+  background: var(--accent-container);
+  color: var(--accent-on-container);
+  border-radius: var(--shape-full);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* The big word display */
+.word-display {
+  font-family: 'Roboto Serif', Georgia, serif;
+  font-variation-settings: "opsz" 144, "GRAD" 0;
+  font-size: 64px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.1;
+  padding: 40px 60px;
+  background: var(--surface-2);
+  border-radius: var(--shape-xl);
+  min-width: 380px;
+  max-width: 90%;
+  box-shadow: var(--elev-1);
+  position: relative;
+}
+
+.word-display .orp {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.block-label {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  font-style: italic;
+}
+
+/* Control strip — Material 3 bottom navigation bar */
+.control-strip {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  background: var(--surface-2);
+  border-radius: var(--shape-xl);
+  padding: 16px 20px 12px;
+  box-shadow: var(--elev-2);
+  z-index: 5;
+}
+
+/* Progress bar — Material slider track */
+.progress-bar {
+  height: 4px;
+  background: var(--surface-5);
+  border-radius: var(--shape-full);
+  margin-bottom: 14px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--shape-full);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.1s linear;
+  width: 100%;
+}
+
+.strip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.strip-info {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+  font-weight: 500;
+}
+
+.strip-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strip-btn {
+  position: relative;
+  width: 44px; height: 44px;
+  border-radius: var(--shape-md);
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+.strip-btn::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--text);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.strip-btn:hover::before { opacity: var(--state-hover); }
+.strip-btn:active::before { opacity: var(--state-pressed); }
+
+.strip-skip {
+  background: var(--surface-3);
+  font-size: 14px;
+}
+
+/* Center play button — elevated FAB above bottom-nav */
+.strip-play {
+  width: 64px;
+  height: 64px;
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: var(--shape-lg);
+  font-size: 22px;
+  box-shadow: var(--elev-3);
+  margin: -28px 4px 0;
+  transform: translateY(0);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.strip-play::before {
+  background: var(--accent-on);
+}
+.strip-play:hover {
+  box-shadow: var(--elev-4);
+  transform: translateY(-1px);
+}
+
+.strip-bm {
+  width: 40px; height: 40px;
+  font-size: 14px;
+}
+
+.strip-wpm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+  justify-content: flex-end;
+}
+
+.strip-wpm-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-container);
+  padding: 4px 10px;
+  border-radius: var(--shape-full);
+  min-width: 50px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Material 3 slider */
+.strip-slider, input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+}
+.strip-slider {
+  width: 120px;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--surface-5);
+  border-radius: 2px;
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--surface-5);
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-top: -6px;
+  border: 4px solid var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 12%, transparent);
+  transition: box-shadow 0.15s;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  border: none;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 12%, transparent);
+  transition: box-shadow 0.15s;
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+input[type="range"]:active::-webkit-slider-thumb {
+  box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* Settings popover — Material bottom sheet */
+.settings-pop {
+  position: absolute;
+  bottom: 130px;
+  right: 24px;
+  background: var(--surface-3);
+  border-radius: var(--shape-xl);
+  padding: 24px;
+  width: 340px;
+  box-shadow: var(--elev-4);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.settings-pop::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 4px;
+  background: var(--outline-variant);
+  border-radius: 2px;
+}
+
+.settings-pop label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+  padding: 4px 0;
+}
+
+.settings-pop input[type="number"] {
+  width: 72px;
+  padding: 6px 10px;
+  background: var(--surface-1);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-sm);
+  font-size: 13px;
+}
+
+.settings-pop input[type="range"] {
+  flex: 1;
+}
+
+/* Material 3 switch-style checkbox */
+.settings-pop input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 52px;
+  height: 32px;
+  background: var(--surface-5);
+  border: 2px solid var(--outline);
+  border-radius: var(--shape-full);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.settings-pop input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  background: var(--outline);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  transition: left 0.2s, width 0.2s, height 0.2s, background 0.2s;
+}
+.settings-pop input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.settings-pop input[type="checkbox"]:checked::before {
+  left: 28px;
+  width: 24px;
+  height: 24px;
+  background: var(--accent-on);
+}
+
+.settings-pop select {
+  background: var(--surface-1);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-sm);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.settings-skip-row {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--outline-variant);
+}
+.settings-skip-row .strip-btn {
+  flex: 1;
+  background: var(--surface-2);
+  border-radius: var(--shape-md);
+  font-size: 13px;
+}
+
+#keyhint {
+  line-height: 1.8;
+}
+
+/* Minimap — hidden by design */
+.minimap {
+  display: none;
+}
+
+/* ─── Mobile adjustments ─── */
+@media (max-width: 768px) {
+  .accent-picker {
+    bottom: 90px;
+    left: 16px;
+    padding: 8px 10px;
+  }
+  .theme-fab {
+    bottom: 90px;
+    left: auto;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+  }
+  .upload-fab {
+    bottom: 16px;
+    left: 16px;
+    padding: 14px 18px;
+    height: 48px;
+    font-size: 13px;
+  }
+  .lib-header { padding: 32px 16px 0; }
+  .lib-body { padding: 0 16px; }
+  .control-strip { left: 12px; right: 12px; bottom: 12px; }
+  .reader-bar { padding: 8px 12px; gap: 8px; }
+  .reader-title { font-size: 15px; }
+  .word-display { font-size: 48px; padding: 32px 24px; min-width: 280px; }
+  .toc-sidebar { width: 88vw; left: -90vw; }
+  .strip-wpm { min-width: 130px; }
+  .settings-pop { right: 12px; left: 12px; width: auto; bottom: 110px; }
+}
+
+@media (max-width: 480px) {
+  .strip-wpm-label { display: none; }
+  .strip-skip { display: none; }
+  .word-display { font-size: 40px; padding: 28px 20px; }
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Loading...</p>
+  <div style="width:200px;height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden"><div id="loadingProgress" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width 0.3s;display:none"></div></div>
+</div>
+
+<!-- ════════ LIBRARY VIEW ════════ -->
+<div id="libraryView" class="view active">
+  <div class="lib-header">
+    <h1><span>R</span>SVP Reader</h1>
+    <p>Speed read anything. One word at a time, as fast as your brain can handle.</p>
+    <div class="tabs">
+      <button class="tab active" id="tabMyBooks" onclick="switchTab('mybooks')">My Books</button>
+      <button class="tab" id="tabFree" onclick="switchTab('free')">Free Library</button>
+      <button class="tab" id="tabDigest" onclick="switchTab('digest')">Dev Digest</button>
+    </div>
+  </div>
+  <div class="lib-body">
+    <!-- My Books panel -->
+    <div id="panelMyBooks">
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="document.getElementById('fileInput').click()">Upload File (.txt .docx .pdf)</button>
+        <input type="file" id="fileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="handleFile(event)">
+      </div>
+      <details style="margin-bottom:20px">
+        <summary style="cursor:pointer;font-size:14px;color:var(--dim);margin-bottom:8px">Paste text directly</summary>
+        <textarea id="pasteArea" class="paste-area" rows="5" placeholder="Paste your book text here..."></textarea>
+        <button class="btn-primary" style="margin-top:8px;display:none" id="pasteBtn" onclick="importPaste()">Import Text</button>
+      </details>
+      <input type="text" class="search-input" id="libFilter" placeholder="Filter books..." style="margin-bottom:12px" oninput="filterLibrary(this.value)">
+      <div id="bookList"></div>
+    </div>
+    <!-- Free Library panel -->
+    <div id="panelFree" class="hidden">
+      <div class="search-row">
+        <input class="search-input" id="gutenSearch" placeholder="Search 60,000+ free books..." onkeydown="if(event.key==='Enter')searchGutenberg()" oninput="if(!this.value.trim()){document.getElementById('gutenResults').innerHTML='';document.getElementById('gutenFeatured').style.display=''}">
+        <button class="btn-primary" onclick="searchGutenberg()">Search</button>
+      </div>
+      <div id="gutenResults"></div>
+      <div id="gutenFeatured"></div>
+    </div>
+    <!-- Dev Digest panel -->
+    <div id="panelDigest" class="hidden">
+      <div class="digest-paste-form open" id="digestPasteForm" style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="digestPasteText" placeholder="Paste dev notes — first line becomes the title, rest become blocks. Tag lines with DONE: HIGH: CRITICAL: INFO: DECIDE:" style="flex:1;min-height:38px;max-height:200px"></textarea>
+        <button class="digest-paste-submit" onclick="submitPastedDigest()" style="white-space:nowrap;height:38px">+ Add</button>
+      </div>
+      <div id="digestList"></div>
+    </div>
+  </div>
+  <div class="accent-picker" id="accentPicker">
+    <div class="accent-dot active" style="background:#e84040" onclick="setAccent('#e84040')" title="Red"></div>
+    <div class="accent-dot" style="background:#e88400" onclick="setAccent('#e88400')" title="Orange"></div>
+    <div class="accent-dot" style="background:#40b860" onclick="setAccent('#40b860')" title="Green"></div>
+    <div class="accent-dot" style="background:#4088e8" onclick="setAccent('#4088e8')" title="Blue"></div>
+    <div class="accent-dot" style="background:#a855f7" onclick="setAccent('#a855f7')" title="Purple"></div>
+    <div class="accent-dot" style="background:#e840a0" onclick="setAccent('#e840a0')" title="Pink"></div>
+    <div class="accent-custom" id="accentCustom" title="Custom color"><input type="color" value="#e84040" id="accentColorInput" oninput="setAccent(this.value)"></div>
+  </div>
+  <button class="theme-fab" onclick="toggleTheme()" id="themeFab1">☀</button>
+  <!-- Extended FAB for upload — bottom-left so it doesn't collide with switcher (bottom-right) -->
+  <button class="upload-fab" onclick="document.getElementById('fileInput').click()" title="Upload file">
+    <span class="fab-icon">+</span>
+    <span>New book</span>
+  </button>
+</div>
+
+<!-- ════════ READER VIEW ════════ -->
+<div id="readerView" class="view">
+  <div class="reader-bar">
+    <button onclick="goToLibrary()">←</button>
+    <button class="current-chapter" id="currentChapter" onclick="toggleTocSidebar()"></button>
+    <span class="reader-title" id="readerBookTitle"></span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" title="Settings">⚙</button>
+      <button class="btn-outline" id="bmHeaderBtn" style="padding:6px 10px;font-size:12px" onclick="addBookmark();this.textContent='Saved!';setTimeout(()=>this.textContent='+BM',1000)" title="Bookmark here">+BM</button>
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="toggleTheme()" id="themeFab2">☀</button>
+    </div>
+  </div>
+
+  <button class="toc-toggle" id="tocToggle" onclick="toggleTocSidebar()">☰</button>
+  <div class="toc-overlay" id="tocOverlay" onclick="toggleTocSidebar()"></div>
+
+  <div class="reader-body">
+    <!-- Navigation drawer TOC -->
+    <aside class="toc-sidebar" id="tocSidebar">
+      <div class="toc-header">
+        <span class="toc-title">Contents</span>
+        <span class="toc-count" id="tocCount"></span>
+      </div>
+      <div class="toc-list" id="tocList"></div>
+      <div class="toc-bookmark-section" id="bookmarkSection">
+        <h4>Bookmarks</h4>
+        <div id="bookmarkList"></div>
+        <button class="btn-bookmark" onclick="addBookmark()">+ Add bookmark here</button>
+      </div>
+    </aside>
+
+    <!-- Main reader content -->
+    <div class="reader-main">
+      <div class="word-area" id="wordArea">
+        <div class="block-indicator hidden" id="blockIndicator"></div>
+        <div class="word-display" id="wordDisplay"></div>
+        <div id="keyhint" style="position:absolute;bottom:160px;font-size:12px;color:var(--dim);opacity:0.5;text-align:center;pointer-events:none;line-height:1.8">
+          Space = play/pause &nbsp;|&nbsp; ← → skip &nbsp;|&nbsp; ↑ ↓ speed &nbsp;|&nbsp; B = bookmark<br>
+          [ ] = font size &nbsp;|&nbsp; Home/End = jump start/end &nbsp;|&nbsp; Esc = library<br>
+          Tap word area to play &nbsp;|&nbsp; Swipe to skip
+        </div>
+        <div class="block-label hidden" id="blockLabel"></div>
+      </div>
+
+      <div class="control-strip" id="controlStrip" onclick="event.stopPropagation()">
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-fill" id="progressFill" style="transform:scaleX(0)"></div>
+        </div>
+        <div class="strip-row">
+          <span class="strip-info" id="wordCount">0 / 0</span>
+          <div class="strip-btns">
+            <button class="strip-btn strip-skip" onclick="skip(-50)" title="Back 50">⏪</button>
+            <button class="strip-btn" id="skipBack10" title="Back 10">◁</button>
+            <button class="strip-btn strip-play" id="playBtn">▶</button>
+            <button class="strip-btn" id="skipFwd10" title="Fwd 10">▷</button>
+            <button class="strip-btn strip-skip" onclick="skip(50)" title="Fwd 50">⏩</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="strip-btn strip-bm" onclick="addBookmark()" title="Bookmark">🔖</button>
+            <div class="strip-wpm">
+              <span class="strip-wpm-label" id="wpmLabel">300</span>
+              <input type="range" min="50" max="1200" step="10" value="300" id="wpmSlider" class="strip-slider">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="settingsPopover" class="settings-pop hidden" onclick="event.stopPropagation()">
+        <label>Font size <input type="range" min="28" max="120" value="64" id="fontSlider" style="width:100px"></label>
+        <label style="cursor:pointer"><input type="checkbox" id="accelCheck" style="accent-color:var(--accent)"> Accel to <input type="number" id="accelTarget" value="600" min="100" max="1500" step="50"> WPM</label>
+        <label style="cursor:pointer"><input type="checkbox" id="ttsCheck" style="accent-color:var(--accent)"> Read aloud (TTS)</label>
+        <div id="ttsVoiceRow" class="hidden" style="display:none;gap:6px;align-items:center">
+          <span style="font-size:11px">Voice</span>
+          <select id="ttsVoice" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:12px"></select>
+        </div>
+        <div class="settings-skip-row">
+          <button class="strip-btn" onclick="skip(-50)">⏪ 50</button>
+          <button class="strip-btn" onclick="skip(50)">50 ⏩</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimap (right side, VS Code style — hidden in Material You) -->
+    <div class="minimap" id="minimap">
+      <canvas id="minimapCanvas" style="opacity:0"></canvas>
+      <div class="minimap-viewport" id="minimapViewport"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="switcher.js" defer></script>
+</body>
+</html>

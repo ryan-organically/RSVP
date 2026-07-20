@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSVP Reader — Raycast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1c1c1e;
+  --surface: #2a2a2c;
+  --surface-2: #313134;
+  --text: #f5f5f7;
+  --dim: #98989d;
+  --dim-2: #6e6e73;
+  --border: #38383a;
+  --border-soft: #2e2e30;
+  --accent: #e84040;
+  --accent-grad: linear-gradient(135deg, #e84040 0%, #e88400 100%);
+  --select: rgba(255,255,255,0.05);
+  --select-strong: rgba(255,255,255,0.07);
+  --shadow-pop: 0 20px 60px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset;
+  --ui: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --serif: "Lora", "Iowan Old Style", "Palatino", Georgia, serif;
+}
+body.light {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f4f4f6;
+  --text: #1c1c1e;
+  --dim: #6e6e73;
+  --dim-2: #98989d;
+  --border: #d2d2d7;
+  --border-soft: #e5e5ea;
+  --select: rgba(0,0,0,0.04);
+  --select-strong: rgba(0,0,0,0.06);
+  --shadow-pop: 0 20px 60px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.6) inset;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+  overflow: hidden;
+}
+
+/* View system */
+.view { display: none; }
+.view.active { display: flex; }
+.hidden { display: none !important; }
+
+/* ====== Library View ====== */
+#libraryView {
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  padding: 28px 0 0;
+  overflow: hidden;
+}
+
+.lib-header {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px 12px;
+}
+.lib-header h1 {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dim);
+  margin: 0 0 2px;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lib-header h1 span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 5px;
+  background: var(--accent-grad);
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  font-family: var(--mono);
+}
+.lib-header p {
+  font-size: 12px;
+  color: var(--dim-2);
+  margin: 0 0 18px;
+}
+
+/* The HUGE Raycast search bar — this is #libFilter inside its wrapper.
+   But #libFilter is in #panelMyBooks. We render a giant search at top
+   that IS #libFilter (when in the My Books panel). For simplicity,
+   we keep #libFilter inline in the panel, but style it as the hero search. */
+.cmdk-wrap {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+}
+.cmdk-bar {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 56px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cmdk-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent), 0 8px 24px rgba(0,0,0,0.25);
+}
+.cmdk-icon {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  color: var(--dim);
+  margin-right: 12px;
+}
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.search-input::placeholder { color: var(--dim-2); }
+.cmdk-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dim);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Tabs — floating pill segmented under the search */
+.tabs {
+  max-width: 760px;
+  width: 100%;
+  margin: 14px auto 0;
+  padding: 0 24px;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+.tabs-inner {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.tab {
+  background: transparent;
+  border: none;
+  color: var(--dim);
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.lib-body {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 760px;
+  width: 100%;
+  margin: 18px auto 0;
+  padding: 0 24px 80px;
+}
+
+/* Section labels */
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim-2);
+  padding: 14px 8px 6px;
+}
+
+/* Book list — tight, command-palette style rows */
+#bookList, #gutenResults, #gutenFeatured, #digestList { display: block; }
+.book-row, .book-item, .digest-item, .guten-result, .guten-feat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+  position: relative;
+}
+.book-row:hover, .book-item:hover, .digest-item:hover, .guten-result:hover, .guten-feat-item:hover {
+  background: var(--select);
+}
+.book-row.selected, .book-item.selected {
+  background: var(--select-strong);
+}
+.book-icon {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.book-meta { flex: 1; min-width: 0; overflow: hidden; }
+.book-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 0 1px;
+}
+.book-sub {
+  font-size: 11.5px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status-pill {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-family: var(--mono);
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  color: var(--dim);
+}
+.book-row .row-enter {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.book-row:hover .row-enter { opacity: 1; }
+
+/* Action buttons */
+.btn-primary {
+  background: var(--accent-grad);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-family: var(--ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.05s;
+  letter-spacing: 0;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 1px 2px rgba(0,0,0,0.2);
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:active { transform: translateY(0.5px); }
+.btn-outline {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 11px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.btn-outline:hover { background: var(--surface-2); border-color: var(--dim-2); }
+
+/* Upload row */
+.upload-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.upload-row .kbd-hint {
+  margin-left: auto;
+  color: var(--dim-2);
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+details {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
+}
+details summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--dim);
+  list-style: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+details summary::before {
+  content: "▸";
+  font-size: 10px;
+  color: var(--dim-2);
+  transition: transform 0.15s;
+  display: inline-block;
+}
+details[open] summary::before { transform: rotate(90deg); }
+.paste-area {
+  width: 100%;
+  margin-top: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 10px;
+  resize: vertical;
+  outline: none;
+}
+.paste-area:focus { border-color: var(--accent); }
+
+/* Free Library search row */
+.search-row {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 12px;
+  align-items: center;
+}
+.search-row .search-input {
+  font-size: 13.5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  height: 38px;
+}
+.search-row .search-input:focus { border-color: var(--accent); }
+
+/* Digest panel */
+.digest-paste-form {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 6px 0 14px;
+}
+#digestPasteText {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 10px;
+  min-height: 38px;
+  max-height: 200px;
+  resize: vertical;
+  outline: none;
+}
+#digestPasteText:focus { border-color: var(--accent); }
+.digest-paste-submit {
+  background: var(--accent-grad);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0 14px;
+  height: 38px;
+  font-family: var(--ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* Accent picker bottom-right */
+.accent-picker {
+  position: fixed;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  z-index: 50;
+}
+.accent-dot {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.accent-dot:hover { transform: scale(1.15); }
+.accent-dot.active {
+  border-color: var(--text);
+  transform: scale(1.1);
+}
+.accent-custom {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1px dashed var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+.accent-custom input[type="color"] {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Theme FAB */
+.theme-fab {
+  position: fixed;
+  bottom: 18px;
+  right: 78px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  z-index: 50;
+}
+.theme-fab:hover { background: var(--surface-2); }
+
+/* ====== Reader View ====== */
+#readerView {
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+.reader-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  min-height: 46px;
+}
+.reader-bar button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--dim);
+  font-family: var(--ui);
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.reader-bar button:hover { background: var(--select); color: var(--text); }
+.current-chapter {
+  font-family: var(--ui);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border-soft) !important;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reader-title {
+  flex: 1;
+  font-size: 12px;
+  color: var(--dim);
+  font-family: var(--mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  padding: 0 12px;
+}
+
+/* TOC */
+.toc-toggle {
+  display: none;
+}
+.toc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.toc-overlay.open { opacity: 1; pointer-events: auto; }
+
+.reader-body {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.toc-sidebar {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 280px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transform: translateX(-100%);
+  transition: transform 0.2s ease;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0 12px;
+  overflow-y: auto;
+}
+.toc-sidebar.open { transform: translateX(0); }
+.toc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.toc-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim-2);
+}
+.toc-count {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--dim);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-soft);
+}
+.toc-list {
+  padding: 6px 8px;
+  flex: 1;
+}
+.toc-list > * {
+  display: block;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: var(--dim);
+  cursor: pointer;
+  border-radius: 5px;
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toc-list > *:last-child { border-bottom: none; }
+.toc-list > *:hover { background: var(--select); color: var(--text); }
+.toc-list > *.active { background: var(--select-strong); color: var(--text); }
+.toc-bookmark-section {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 6px;
+}
+.toc-bookmark-section h4 {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim-2);
+  margin: 0 0 8px;
+}
+#bookmarkList > * {
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--dim);
+  cursor: pointer;
+  border-radius: 5px;
+}
+#bookmarkList > *:hover { background: var(--select); color: var(--text); }
+.btn-bookmark {
+  width: 100%;
+  margin-top: 8px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--dim);
+  font-family: var(--ui);
+  font-size: 11.5px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+.btn-bookmark:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Reader main */
+.reader-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.word-area {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  cursor: pointer;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+}
+.block-indicator {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+.word-display {
+  font-family: var(--serif);
+  font-size: 64px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: center;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  user-select: none;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.word-display .orp {
+  color: var(--accent);
+  font-weight: 600;
+}
+.block-label {
+  position: absolute;
+  bottom: 28px;
+  font-size: 11px;
+  color: var(--dim);
+  font-family: var(--mono);
+}
+
+/* Control strip */
+.control-strip {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 10px 18px 12px;
+}
+.progress-bar {
+  position: relative;
+  height: 3px;
+  background: var(--border-soft);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.progress-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent-grad);
+  transform-origin: left;
+  transform: scaleX(0);
+  border-radius: 2px;
+}
+.strip-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.strip-info {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  min-width: 90px;
+}
+.strip-btns {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+.strip-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 13px;
+  width: 32px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, border-color 0.1s;
+}
+.strip-btn:hover { background: var(--select); }
+.strip-play {
+  background: var(--accent-grad);
+  color: #fff;
+  width: 36px;
+  height: 30px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 1px 2px rgba(0,0,0,0.25);
+}
+.strip-play:hover { filter: brightness(1.08); background: var(--accent-grad); }
+.strip-skip { color: var(--dim); }
+.strip-bm { color: var(--dim); }
+.strip-wpm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+  justify-content: flex-end;
+}
+.strip-wpm-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  min-width: 30px;
+  text-align: right;
+}
+.strip-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+.strip-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.strip-slider::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+}
+
+/* Settings popover */
+.settings-pop {
+  position: absolute;
+  top: 56px;
+  right: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 80;
+  min-width: 280px;
+  box-shadow: var(--shadow-pop);
+}
+.settings-pop label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--dim);
+}
+.settings-pop input[type="number"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 2px 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  width: 64px;
+}
+.settings-pop input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.settings-pop input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+}
+.settings-skip-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* Minimap — keep in DOM but hide */
+.minimap { display: none; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: var(--ui);
+  z-index: 1000;
+  transition: transform 0.25s ease;
+  box-shadow: var(--shadow-pop);
+  pointer-events: none;
+  opacity: 0;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* Loading */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loadingMsg { font-size: 13px; color: var(--text); margin: 0; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim-2); }
+
+/* Keyhint */
+#keyhint {
+  font-family: var(--mono) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.04em;
+}
+
+/* Reader keyboard hint strip — built into the word area via #keyhint already */
+
+/* Responsive */
+@media (max-width: 640px) {
+  .toc-sidebar { width: 86%; max-width: 320px; }
+  .reader-title { display: none; }
+  .word-display { font-size: 48px; }
+  .strip-info { display: none; }
+  .strip-wpm { min-width: 0; }
+  .cmdk-hint { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Loading...</p>
+  <div style="width:200px;height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden"><div id="loadingProgress" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width 0.3s;display:none"></div></div>
+</div>
+
+<!-- ════════ LIBRARY VIEW ════════ -->
+<div id="libraryView" class="view active">
+  <div class="lib-header">
+    <h1><span>R</span>SVP Reader</h1>
+    <p>Speed read anything. One word at a time, as fast as your brain can handle.</p>
+  </div>
+
+  <div class="cmdk-wrap">
+    <div class="cmdk-bar">
+      <svg class="cmdk-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" class="search-input" id="libFilter" placeholder="Search books..." oninput="filterLibrary(this.value)" autocomplete="off" spellcheck="false">
+      <span class="cmdk-hint"><kbd>⌘</kbd><kbd>K</kbd></span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tabs-inner">
+      <button class="tab active" id="tabMyBooks" onclick="switchTab('mybooks')">My Books</button>
+      <button class="tab" id="tabFree" onclick="switchTab('free')">Free Library</button>
+      <button class="tab" id="tabDigest" onclick="switchTab('digest')">Dev Digest</button>
+    </div>
+  </div>
+
+  <div class="lib-body">
+    <!-- My Books panel -->
+    <div id="panelMyBooks">
+      <div class="upload-row">
+        <button class="btn-primary" onclick="document.getElementById('fileInput').click()">Upload File <span style="opacity:.7;font-family:var(--mono);font-size:11px;margin-left:4px">.txt .docx .pdf</span></button>
+        <input type="file" id="fileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="handleFile(event)">
+        <span class="kbd-hint"><kbd>⏎</kbd> open · <kbd>↑</kbd><kbd>↓</kbd> nav</span>
+      </div>
+      <details>
+        <summary>Paste text directly</summary>
+        <textarea id="pasteArea" class="paste-area" rows="5" placeholder="Paste your book text here..."></textarea>
+        <button class="btn-primary" style="margin-top:8px;display:none" id="pasteBtn" onclick="importPaste()">Import Text</button>
+      </details>
+      <div class="section-label">Library</div>
+      <div id="bookList"></div>
+    </div>
+
+    <!-- Free Library panel -->
+    <div id="panelFree" class="hidden">
+      <div class="search-row">
+        <input class="search-input" id="gutenSearch" placeholder="Search 60,000+ free books..." onkeydown="if(event.key==='Enter')searchGutenberg()" oninput="if(!this.value.trim()){document.getElementById('gutenResults').innerHTML='';document.getElementById('gutenFeatured').style.display=''}">
+        <button class="btn-primary" onclick="searchGutenberg()">Search <kbd style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:#fff;margin-left:6px">⏎</kbd></button>
+      </div>
+      <div id="gutenResults"></div>
+      <div class="section-label">Featured</div>
+      <div id="gutenFeatured"></div>
+    </div>
+
+    <!-- Dev Digest panel -->
+    <div id="panelDigest" class="hidden">
+      <div class="digest-paste-form open" id="digestPasteForm">
+        <textarea id="digestPasteText" placeholder="Paste dev notes — first line becomes the title, rest become blocks. Tag lines with DONE: HIGH: CRITICAL: INFO: DECIDE:"></textarea>
+        <button class="digest-paste-submit" onclick="submitPastedDigest()">+ Add</button>
+      </div>
+      <div class="section-label">Recent Sessions</div>
+      <div id="digestList"></div>
+    </div>
+  </div>
+
+  <div class="accent-picker" id="accentPicker">
+    <div class="accent-dot active" style="background:#e84040" onclick="setAccent('#e84040')" title="Red"></div>
+    <div class="accent-dot" style="background:#e88400" onclick="setAccent('#e88400')" title="Orange"></div>
+    <div class="accent-dot" style="background:#40b860" onclick="setAccent('#40b860')" title="Green"></div>
+    <div class="accent-dot" style="background:#4088e8" onclick="setAccent('#4088e8')" title="Blue"></div>
+    <div class="accent-dot" style="background:#a855f7" onclick="setAccent('#a855f7')" title="Purple"></div>
+    <div class="accent-dot" style="background:#e840a0" onclick="setAccent('#e840a0')" title="Pink"></div>
+    <div class="accent-custom" id="accentCustom" title="Custom color"><input type="color" value="#e84040" id="accentColorInput" oninput="setAccent(this.value)"></div>
+  </div>
+  <button class="theme-fab" onclick="toggleTheme()" id="themeFab1">☀</button>
+</div>
+
+<!-- ════════ READER VIEW ════════ -->
+<div id="readerView" class="view">
+  <div class="reader-bar">
+    <button onclick="goToLibrary()">← Library <kbd style="margin-left:4px">Esc</kbd></button>
+    <button class="current-chapter" id="currentChapter" onclick="toggleTocSidebar()"></button>
+    <span class="reader-title" id="readerBookTitle"></span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" title="Settings">⚙</button>
+      <button class="btn-outline" id="bmHeaderBtn" style="padding:6px 10px;font-size:12px" onclick="addBookmark();this.textContent='Saved!';setTimeout(()=>this.textContent='+BM',1000)" title="Bookmark here">+BM</button>
+      <button class="btn-outline" style="padding:6px 10px;font-size:12px" onclick="toggleTheme()" id="themeFab2">☀</button>
+    </div>
+  </div>
+
+  <button class="toc-toggle" id="tocToggle" onclick="toggleTocSidebar()">☰</button>
+  <div class="toc-overlay" id="tocOverlay" onclick="toggleTocSidebar()"></div>
+
+  <div class="reader-body">
+    <!-- Left TOC Sidebar -->
+    <aside class="toc-sidebar" id="tocSidebar">
+      <div class="toc-header">
+        <span class="toc-title">Contents</span>
+        <span class="toc-count" id="tocCount"></span>
+      </div>
+      <div class="toc-list" id="tocList"></div>
+      <div class="toc-bookmark-section" id="bookmarkSection">
+        <h4>Bookmarks</h4>
+        <div id="bookmarkList"></div>
+        <button class="btn-bookmark" onclick="addBookmark()">+ Add bookmark here</button>
+      </div>
+    </aside>
+
+    <!-- Main reader content -->
+    <div class="reader-main">
+      <div class="word-area" id="wordArea">
+        <div class="block-indicator hidden" id="blockIndicator"></div>
+        <div class="word-display" id="wordDisplay"></div>
+        <div id="keyhint" style="position:absolute;bottom:120px;font-size:10px;color:var(--dim);opacity:0.5;text-align:center;pointer-events:none;line-height:1.9;font-family:var(--mono)">
+          <kbd>SPACE</kbd> play · <kbd>←</kbd><kbd>→</kbd> skip · <kbd>↑</kbd><kbd>↓</kbd> speed · <kbd>B</kbd> bookmark<br>
+          <kbd>[</kbd><kbd>]</kbd> font · <kbd>Home</kbd><kbd>End</kbd> jump · <kbd>Esc</kbd> library
+        </div>
+        <div class="block-label hidden" id="blockLabel"></div>
+      </div>
+
+      <div class="control-strip" id="controlStrip" onclick="event.stopPropagation()">
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-fill" id="progressFill" style="transform:scaleX(0)"></div>
+        </div>
+        <div class="strip-row">
+          <span class="strip-info" id="wordCount">0 / 0</span>
+          <div class="strip-btns">
+            <button class="strip-btn strip-skip" onclick="skip(-50)" title="Back 50">⏪</button>
+            <button class="strip-btn" id="skipBack10" title="Back 10">◁</button>
+            <button class="strip-btn strip-play" id="playBtn">▶</button>
+            <button class="strip-btn" id="skipFwd10" title="Fwd 10">▷</button>
+            <button class="strip-btn strip-skip" onclick="skip(50)" title="Fwd 50">⏩</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="strip-btn strip-bm" onclick="addBookmark()" title="Bookmark">🔖</button>
+            <div class="strip-wpm">
+              <span class="strip-wpm-label" id="wpmLabel">300</span>
+              <input type="range" min="50" max="1200" step="10" value="300" id="wpmSlider" class="strip-slider">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="settingsPopover" class="settings-pop hidden" onclick="event.stopPropagation()">
+        <label>Font size <input type="range" min="28" max="120" value="64" id="fontSlider" style="width:100px"></label>
+        <label style="cursor:pointer"><input type="checkbox" id="accelCheck" style="accent-color:var(--accent)"> Accel to <input type="number" id="accelTarget" value="600" min="100" max="1500" step="50"> WPM</label>
+        <label style="cursor:pointer"><input type="checkbox" id="ttsCheck" style="accent-color:var(--accent)"> Read aloud (TTS)</label>
+        <div id="ttsVoiceRow" class="hidden" style="display:none;gap:6px;align-items:center">
+          <span style="font-size:11px">Voice</span>
+          <select id="ttsVoice" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:12px"></select>
+        </div>
+        <div class="settings-skip-row">
+          <button class="strip-btn" onclick="skip(-50)">⏪ 50</button>
+          <button class="strip-btn" onclick="skip(50)">50 ⏩</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimap (hidden in CSS) -->
+    <div class="minimap" id="minimap">
+      <canvas id="minimapCanvas" style="opacity:0"></canvas>
+      <div class="minimap-viewport" id="minimapViewport"></div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="switcher.js" defer></script>
+</body>
+</html>

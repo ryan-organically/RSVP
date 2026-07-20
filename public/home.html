@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focal — the reading layer for the internet</title>
+<meta name="description" content="Focal is a reading marketplace and a licensable speed-reading API. Sell your books, embed RSVP anywhere, and read everything at the speed of thought.">
+<meta name="theme-color" content="#0a0a0d">
+<link rel="canonical" href="https://focal.wiki/">
+<!-- favicon: amber ring with the ember ORP dot -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0d'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%23f5a623' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23ff5230'/%3E%3C/svg%3E">
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Focal">
+<meta property="og:title" content="Focal — the reading layer for the internet">
+<meta property="og:description" content="A marketplace where authors sell, plus a licensable speed-reading API you can embed in three lines. Read everything at the speed of thought.">
+<meta property="og:url" content="https://focal.wiki/">
+<meta property="og:image" content="https://focal.wiki/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Focal — the reading layer for the internet">
+<meta name="twitter:description" content="A reading marketplace and a licensable speed-reading API. Sell books, embed RSVP anywhere, read at the speed of thought.">
+<meta name="twitter:image" content="https://focal.wiki/og.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..600&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0a0a0d; --ink2:#0e0e13; --panel:#121219; --panel2:#16161f;
+  --line:#23232d; --line2:#2e2e3a;
+  --cream:#f4efe6; --mut:#9b9baa; --dim:#6d6d7e;
+  --amber:#f5a623; --amber-2:#ffc564; --ember:#ff5230; --iris:#7c8cff; --mint:#67e8c3;
+  --maxw:1280px;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--ink);color:var(--cream);
+  font-family:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:"Fraunces",Georgia,serif;font-weight:500;margin:0;letter-spacing:-.01em}
+.serif{font-family:"Fraunces",Georgia,serif}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.34em;
+  text-transform:uppercase;color:var(--mut)}
+.amber{color:var(--amber)} .ember{color:var(--ember)} .iris{color:var(--iris)}
+
+/* ---------- background: aurora + grain + grid ---------- */
+.bg{position:fixed;inset:0;z-index:-2;overflow:hidden;background:
+  radial-gradient(120% 80% at 50% -10%, #15131c 0%, var(--ink) 60%)}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;
+  mix-blend-mode:screen;will-change:transform}
+.blob.a{width:720px;height:720px;left:-160px;top:-200px;
+  background:radial-gradient(circle,rgba(245,166,35,.55),transparent 65%);animation:drift1 26s var(--ease) infinite alternate}
+.blob.b{width:640px;height:640px;right:-180px;top:60px;
+  background:radial-gradient(circle,rgba(255,82,48,.42),transparent 65%);animation:drift2 32s var(--ease) infinite alternate}
+.blob.c{width:560px;height:560px;left:40%;top:520px;
+  background:radial-gradient(circle,rgba(124,140,255,.38),transparent 65%);animation:drift3 30s var(--ease) infinite alternate}
+@keyframes drift1{to{transform:translate(120px,90px) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-100px,120px) scale(1.1)}}
+@keyframes drift3{to{transform:translate(80px,-90px) scale(1.2)}}
+.grid-overlay{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 0%,#000 38%,transparent 78%);
+  mask-image:radial-gradient(120% 90% at 50% 0%,#000 0%,#000 38%,transparent 78%)}
+.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.045;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- nav ---------- */
+header{position:fixed;top:0;left:0;right:0;z-index:50;transition:background .3s,border-color .3s}
+header.scrolled{background:rgba(10,10,13,.72);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:66px}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Fraunces",serif;font-size:23px;font-weight:600;letter-spacing:-.02em}
+.brand .dot{width:11px;height:11px;border-radius:50%;background:var(--ember);box-shadow:0 0 0 4px rgba(255,82,48,.18);flex:none}
+.nav-links{display:flex;gap:6px;align-items:center}
+.nav-links a{color:var(--mut);font-size:14px;padding:8px 14px;border-radius:9px;transition:.2s}
+.nav-links a:hover{color:var(--cream);background:var(--panel)}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:"Space Grotesk",sans-serif;
+  font-weight:600;font-size:14px;padding:11px 20px;border-radius:11px;cursor:pointer;border:1px solid transparent;
+  transition:transform .15s var(--ease),filter .2s,background .2s,border-color .2s;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--amber);color:#1a1206;box-shadow:0 6px 24px -8px rgba(245,166,35,.7)}
+.btn-primary:hover{filter:brightness(1.07)}
+.btn-ghost{background:transparent;border-color:var(--line2);color:var(--cream)}
+.btn-ghost:hover{border-color:var(--amber);color:var(--amber)}
+.btn-lg{padding:15px 26px;font-size:15.5px;border-radius:13px}
+/* hamburger + mobile menu */
+.burger{display:none;width:44px;height:44px;border:1px solid var(--line2);border-radius:11px;background:var(--panel);
+  cursor:pointer;align-items:center;justify-content:center;flex-direction:column;gap:5px;flex:none}
+.burger span{display:block;width:18px;height:2px;background:var(--cream);border-radius:2px;transition:transform .3s var(--ease),opacity .2s}
+.burger[aria-expanded=true] span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger[aria-expanded=true] span:nth-child(2){opacity:0}
+.burger[aria-expanded=true] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.mobile-menu{position:fixed;inset:0;z-index:60;background:rgba(8,8,11,.86);backdrop-filter:blur(18px);
+  display:flex;flex-direction:column;padding:96px 28px 40px;gap:6px;
+  opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .3s var(--ease),transform .3s var(--ease),visibility .3s}
+.mobile-menu.open{opacity:1;visibility:visible;transform:none}
+.mobile-menu a{font-family:"Fraunces",serif;font-size:1.9rem;color:var(--cream);padding:12px 4px;border-bottom:1px solid var(--line)}
+.mobile-menu a:active{color:var(--amber)}
+.mobile-menu .mm-cta{margin-top:24px;border:0}
+.mm-close{position:absolute;top:18px;right:24px}
+@media(max-width:860px){.nav-links{display:none}.burger{display:flex}}
+
+/* visible keyboard focus everywhere */
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid var(--amber);outline-offset:3px;border-radius:6px}
+.skip{position:absolute;left:16px;top:-60px;z-index:100;background:var(--amber);color:#1a1206;
+  font-weight:600;padding:10px 16px;border-radius:10px;transition:top .2s}
+.skip:focus{top:16px}
+
+/* ---------- hero: editorial, asymmetric, hairline-ruled ---------- */
+.hero{position:relative;padding:148px 0 76px;text-align:left}
+.hero-grid{display:grid;grid-template-columns:repeat(12,1fr);column-gap:28px;row-gap:44px;align-items:start;margin-top:30px}
+.hero-main{grid-column:1/9}
+.hero-side{grid-column:10/13;padding-top:8px}
+@media(max-width:960px){.hero-main,.hero-side{grid-column:1/-1}.hero-side{padding-top:0}}
+.tag-row{display:inline-flex;align-items:center;gap:10px;padding:7px 7px 7px 16px;border:1px solid var(--line2);
+  border-radius:100px;background:rgba(18,18,25,.6);backdrop-filter:blur(8px)}
+.tag-row .pip{font-size:11px;letter-spacing:.04em;color:var(--mut)}
+.tag-row .chip{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--ember);color:#190a06;padding:4px 9px;border-radius:100px;font-weight:500}
+.hero h1{font-size:clamp(3rem,8.4vw,7.2rem);line-height:.95;letter-spacing:-.025em;margin:0;max-width:none}
+.hero h1 em{font-style:italic;color:var(--amber)}
+.hero-sub{margin:0 0 26px;color:var(--mut);font-size:1.05rem;line-height:1.6;max-width:36ch}
+.hero-cta{display:flex;gap:14px;justify-content:flex-start;flex-wrap:wrap}
+
+/* the live RSVP reticle — the product reads the headline to you */
+.reticle{position:relative;margin:36px 0 0;padding:44px 18px 36px;
+  border:1px solid var(--line2);border-radius:0;background:
+  linear-gradient(180deg,rgba(20,20,28,.7),rgba(12,12,17,.5));backdrop-filter:blur(10px)}
+.reticle::before,.reticle::after{content:"";position:absolute;left:50%;transform:translateX(-50%);
+  width:1px;height:20px;background:linear-gradient(var(--amber),transparent)}
+.reticle::before{top:10px} .reticle::after{bottom:10px;background:linear-gradient(transparent,var(--amber))}
+.guide{position:absolute;left:8%;right:8%;height:1px;background:
+  linear-gradient(90deg,transparent,var(--line2) 14%,var(--line2) 86%,transparent)}
+.guide.top{top:34px} .guide.bot{bottom:30px}
+.rsvp-word{font-family:"Fraunces",serif;font-weight:500;font-size:clamp(2rem,3.6vw,2.9rem);
+  line-height:1;letter-spacing:-.02em;min-height:1.1em;display:flex;justify-content:center;align-items:center;
+  white-space:nowrap}
+.rsvp-word .pre{color:var(--cream)} .rsvp-word .piv{color:var(--ember)} .rsvp-word .post{color:var(--cream)}
+.rsvp-meta{display:flex;justify-content:center;gap:16px;margin-top:22px;
+  font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+.rsvp-meta b{color:var(--amber);font-weight:500}
+.hero-stats{display:flex;gap:0;justify-content:flex-start;margin-top:70px;flex-wrap:wrap;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;max-width:none;background:transparent}
+.hero-stats .s{flex:1;min-width:150px;padding:24px 22px 24px 0;text-align:left;border-right:1px solid var(--line)}
+.hero-stats .s:last-child{border-right:0}
+.hero-stats .s+.s{padding-left:22px}
+.hero-stats .num{font-family:"Fraunces",serif;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:600;color:var(--cream)}
+.hero-stats .lab{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-top:4px}
+
+/* ---------- section scaffolding ---------- */
+section{position:relative}
+.sec{padding:96px 0}
+.sec-head{max-width:680px;margin-bottom:50px}
+.sec-head.center{margin-inline:auto;text-align:center}
+.sec-head .eyebrow{display:block;margin-bottom:16px}
+.sec-head h2{font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.05}
+.sec-head h2 em{font-style:italic;color:var(--amber)}
+.sec-head p{color:var(--mut);font-size:1.08rem;margin-top:16px;max-width:56ch}
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+
+/* ---------- marketplace ---------- */
+.mk-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:20px}
+.card{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,var(--panel),var(--ink2));
+  padding:22px;transition:border-color .3s,box-shadow .3s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--line2);box-shadow:0 30px 70px -40px rgba(0,0,0,.8)}
+.tilt{transform-style:preserve-3d;transition:transform .2s var(--ease)}
+.tilt .glow{position:absolute;inset:0;opacity:0;transition:opacity .3s;pointer-events:none;
+  background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(245,166,35,.14),transparent 60%)}
+.card:hover .glow{opacity:1}
+.book{grid-column:span 4}
+.book .cover{aspect-ratio:3/4;border-radius:12px;border:1px solid var(--line2);position:relative;overflow:hidden;
+  display:flex;align-items:flex-end;padding:18px;margin-bottom:18px;
+  background:linear-gradient(150deg,#1c1622,#241a14)}
+.book .cover .ttl{font-family:"Fraunces",serif;font-size:1.5rem;font-weight:600;line-height:1.1;z-index:1}
+.book .cover .sheen{position:absolute;inset:0;background:radial-gradient(120% 60% at 20% 0%,rgba(245,166,35,.25),transparent 55%)}
+.book .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.book .author{color:var(--mut);font-size:13.5px}
+.book .price{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--amber)}
+.book .meta{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.pill{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mut);border:1px solid var(--line2);border-radius:100px;padding:4px 10px}
+.mk-cta{grid-column:span 12;margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  border:1px dashed var(--line2);border-radius:18px;padding:26px 28px;background:rgba(245,166,35,.03)}
+.mk-cta h3{font-size:1.5rem} .mk-cta p{color:var(--mut);margin:6px 0 0}
+@media(max-width:900px){.book{grid-column:span 6}}
+@media(max-width:620px){.book{grid-column:span 12}}
+
+/* ---------- three-audience selector ---------- */
+.aud{display:flex;flex-direction:column;align-items:center}
+.aud-tabs{display:inline-flex;gap:5px;padding:6px;border:1px solid var(--line2);border-radius:100px;
+  background:var(--panel);margin-bottom:42px;flex-wrap:wrap;justify-content:center}
+.aud-tab{font-family:"Space Grotesk";font-weight:600;font-size:14.5px;color:var(--mut);background:none;border:0;
+  cursor:pointer;padding:11px 24px;border-radius:100px;transition:color .25s,background .25s}
+.aud-tab:hover{color:var(--cream)}
+.aud-tab.active{background:var(--cream);color:#16110a}
+.aud-panels{width:100%}
+.aud-panel{display:none}
+.aud-panel.active{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;animation:audIn .5s var(--ease)}
+@keyframes audIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.aud-panel h3{font-family:"Fraunces",serif;font-weight:500;font-size:clamp(1.7rem,3.4vw,2.5rem);line-height:1.1;letter-spacing:-.01em}
+.aud-panel h3 em{font-style:italic;color:var(--amber)}
+.aud-panel .ap{color:var(--mut);font-size:1.05rem;line-height:1.6;margin:14px 0 22px;max-width:46ch}
+.aud-list{list-style:none;margin:0 0 28px;padding:0;display:flex;flex-direction:column;gap:12px}
+.aud-list li{font-size:14.5px;color:var(--cream);padding-left:26px;position:relative}
+.aud-list li::before{content:"✓";position:absolute;left:0;top:0;color:var(--amber);font-size:14px}
+.aud-vis{border:1px solid var(--line2);border-radius:20px;padding:30px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,var(--panel),var(--ink2));min-height:280px;display:flex;flex-direction:column;justify-content:center}
+.aud-vis .vhead{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:16px}
+/* readers visual */
+.vis-reticle{font-family:"Fraunces",serif;font-size:clamp(2.4rem,5vw,3.4rem);text-align:center;line-height:1;margin:6px 0 22px}
+.vis-reticle .piv{color:var(--ember)}
+.vis-stats{display:flex;gap:14px}
+.vis-stats .vs{flex:1;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+.vis-stats .vs b{font-family:"Fraunces",serif;font-size:1.5rem;color:var(--cream);display:block}
+.vis-stats .vs span{font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+/* authors visual */
+.vis-rev .amt{font-family:"Fraunces",serif;font-weight:600;font-size:3rem;color:transparent;line-height:1;
+  background:linear-gradient(120deg,var(--amber),var(--ember));-webkit-background-clip:text;background-clip:text}
+.vis-rev .delta{font-family:"Space Grotesk";font-size:13.5px;color:var(--mint);margin:6px 0 22px}
+.vis-spark{display:flex;align-items:flex-end;gap:7px;height:80px;margin-bottom:18px}
+.vis-spark i{flex:1;border-radius:5px 5px 0 0;background:linear-gradient(180deg,var(--amber),rgba(245,166,35,.25))}
+.vis-rev .pillrow{display:flex;gap:8px}
+/* developers visual */
+.aud-vis .code{box-shadow:none;margin:0}
+.aud-vis .code pre{min-height:0;font-size:12.5px;padding:18px}
+@media(max-width:860px){.aud-panel.active{grid-template-columns:1fr;gap:30px}}
+
+/* ---------- API section ---------- */
+.api{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.api .feat{display:flex;gap:14px;margin-top:22px}
+.api .feat .ic{width:38px;height:38px;border-radius:11px;border:1px solid var(--line2);flex:none;
+  display:flex;align-items:center;justify-content:center;color:var(--iris);background:rgba(124,140,255,.06)}
+.api .feat h4{margin:0 0 2px;font-family:"Space Grotesk";font-size:15.5px;font-weight:600}
+.api .feat p{margin:0;color:var(--mut);font-size:14px}
+.code{border:1px solid var(--line2);border-radius:16px;overflow:hidden;background:#0c0c11;
+  box-shadow:0 40px 100px -50px rgba(124,140,255,.4)}
+.code .bar{display:flex;align-items:center;gap:7px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.code .bar i{width:11px;height:11px;border-radius:50%;background:var(--line2);display:block}
+.code .bar i:nth-child(1){background:#ff5f57}.code .bar i:nth-child(2){background:#febc2e}.code .bar i:nth-child(3){background:#28c840}
+.code .bar span{margin-left:8px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--dim)}
+.code pre{margin:0;padding:22px;font-family:"JetBrains Mono",monospace;font-size:13.5px;line-height:1.8;color:#cdd2e0;overflow-x:auto;min-height:230px}
+.code .k{color:var(--iris)}.code .s{color:var(--mint)}.code .c{color:var(--dim)}.code .a{color:var(--amber)}
+.cursor-blink{display:inline-block;width:8px;height:18px;background:var(--iris);vertical-align:-3px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media(max-width:900px){.api{grid-template-columns:1fr}}
+
+/* ---------- pricing ---------- */
+.bill{display:inline-flex;gap:4px;margin-top:26px;padding:5px;border:1px solid var(--line2);border-radius:100px;background:var(--panel)}
+.bseg{font-family:"Space Grotesk";font-size:13.5px;font-weight:500;color:var(--mut);background:transparent;border:0;cursor:pointer;
+  padding:9px 18px;border-radius:100px;transition:.25s var(--ease);display:inline-flex;align-items:center;gap:8px}
+.bseg.active{background:var(--cream);color:#16110a}
+.bseg .save{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--amber)}
+.bseg.active .save{color:var(--ember)}
+.price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:stretch}
+.tier{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,var(--panel),var(--ink2));
+  padding:28px 24px;display:flex;flex-direction:column;position:relative}
+.tier.feat{border-color:rgba(245,166,35,.55);background:linear-gradient(180deg,rgba(245,166,35,.07),rgba(245,166,35,.012));
+  box-shadow:0 36px 90px -46px rgba(245,166,35,.55)}
+.tier .badge{position:absolute;top:-11px;left:24px;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;background:var(--amber);color:#1a1206;padding:4px 11px;border-radius:100px}
+.tier .name{font-family:"Space Grotesk";font-size:14px;font-weight:600;letter-spacing:.02em;color:var(--mut);margin-bottom:14px}
+.tier .price{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.tier .amt{font-family:"Fraunces",serif;font-size:2.6rem;font-weight:600;color:var(--cream);line-height:1}
+.tier .per{color:var(--dim);font-size:13px}
+.tier .t-sub{color:var(--mut);font-size:13.5px;line-height:1.5;margin:8px 0 18px;min-height:40px}
+.tier .t-list{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:11px;flex:1}
+.tier .t-list li{font-size:13.5px;color:var(--cream);padding-left:24px;position:relative}
+.tier .t-list li::before{content:"";position:absolute;left:0;top:7px;width:13px;height:13px;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,var(--amber) 0 30%,transparent 32%);border:1px solid rgba(245,166,35,.4)}
+.tier.feat .t-list li::before{background:radial-gradient(circle at 50% 50%,var(--ember) 0 30%,transparent 32%)}
+@keyframes priceIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.amt.flip{animation:priceIn .35s var(--ease)}
+@media(max-width:1000px){.price-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.price-grid{grid-template-columns:1fr}}
+
+/* ---------- live playground ---------- */
+.player{border:1px solid var(--line2);border-radius:22px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(18,18,26,.82),rgba(10,10,15,.62));backdrop-filter:blur(10px);
+  box-shadow:0 50px 140px -64px rgba(245,166,35,.42),inset 0 1px 0 rgba(255,255,255,.04)}
+.player .stage{position:relative;padding:66px 24px 34px;text-align:center;border-bottom:1px solid var(--line)}
+.player .stage::before{content:"";position:absolute;left:50%;top:0;transform:translateX(-50%);
+  width:1px;height:30px;background:linear-gradient(var(--amber),transparent)}
+.pl-word{font-family:"Fraunces",serif;font-weight:500;font-size:clamp(2.3rem,7vw,4.4rem);line-height:1;
+  letter-spacing:-.02em;min-height:1.15em;display:flex;justify-content:center;align-items:center;white-space:nowrap}
+.pl-word .pre,.pl-word .post{color:var(--cream)} .pl-word .piv{color:var(--ember)}
+.pl-rail{position:absolute;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--line2) 12%,var(--line2) 88%,transparent)}
+.pl-rail.t{top:48px}.pl-rail.b{bottom:20px}
+.pl-track{height:3px;background:var(--line);position:relative}
+.pl-track .fill{position:absolute;left:0;top:0;bottom:0;width:0;
+  background:linear-gradient(90deg,var(--amber),var(--ember));box-shadow:0 0 12px rgba(245,166,35,.6);transition:width .08s linear}
+.pl-controls{display:flex;align-items:center;gap:18px;padding:18px 22px;flex-wrap:wrap}
+.pl-play{width:52px;height:52px;border-radius:50%;border:0;cursor:pointer;flex:none;background:var(--amber);color:#1a1206;
+  display:flex;align-items:center;justify-content:center;transition:transform .15s,filter .2s;box-shadow:0 8px 28px -8px rgba(245,166,35,.7)}
+.pl-play:hover{transform:scale(1.06);filter:brightness(1.06)}
+.pl-play svg{width:20px;height:20px;fill:currentColor}
+.pl-wpm{display:flex;align-items:center;gap:12px;flex:1;min-width:220px}
+.pl-wpm input[type=range]{flex:1;accent-color:var(--amber);height:4px;cursor:pointer}
+.pl-wpm .val{font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--amber);min-width:78px;text-align:right}
+.pl-meta{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.pl-samples{display:flex;gap:8px;flex-wrap:wrap;padding:2px 22px 18px}
+.chipbtn{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);
+  background:var(--panel);border:1px solid var(--line2);border-radius:100px;padding:7px 14px;cursor:pointer;transition:.2s}
+.chipbtn:hover{color:var(--cream);border-color:var(--amber)}
+.chipbtn.active{background:var(--amber);color:#1a1206;border-color:var(--amber)}
+.pl-input{padding:0 22px 24px}
+.pl-paste{width:100%;background:#0c0c11;border:1px solid var(--line2);border-radius:12px;color:var(--cream);
+  font-family:"Space Grotesk",sans-serif;font-size:14px;line-height:1.55;padding:14px 16px;resize:vertical;min-height:76px}
+.pl-paste:focus{outline:none;border-color:var(--amber)}
+.pl-paste::placeholder{color:var(--dim)}
+
+/* ---------- ORP explainer ---------- */
+.orp{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:center}
+.orp .feat{display:flex;gap:14px;margin-top:20px}
+.orp .feat .ix{width:34px;height:34px;border-radius:10px;border:1px solid var(--line2);flex:none;
+  display:flex;align-items:center;justify-content:center;color:var(--ember);font-family:"JetBrains Mono",monospace;
+  font-size:13px;background:rgba(255,82,48,.06)}
+.orp .feat h4{margin:0 0 2px;font-family:"Space Grotesk";font-size:15px;font-weight:600}
+.orp .feat p{margin:0;color:var(--mut);font-size:13.5px}
+.orp-scope{position:relative;border:1px solid var(--line2);border-radius:22px;background:#0b0b10;
+  padding:30px 0;overflow:hidden;box-shadow:0 40px 110px -54px rgba(255,82,48,.4),inset 0 1px 0 rgba(255,255,255,.04)}
+.orp-axis{position:absolute;left:50%;top:14px;bottom:14px;width:1px;transform:translateX(-50%);
+  background:linear-gradient(transparent,rgba(255,82,48,.55) 12%,rgba(255,82,48,.55) 88%,transparent);z-index:2}
+.orp-axis::before,.orp-axis::after{content:"";position:absolute;left:50%;transform:translateX(-50%);
+  border-left:5px solid transparent;border-right:5px solid transparent}
+.orp-axis::before{top:-2px;border-top:7px solid var(--ember)}
+.orp-axis::after{bottom:-2px;border-bottom:7px solid var(--ember)}
+.orp-rows{position:relative;z-index:1}
+.orp-row{display:flex;align-items:center;font-family:"Fraunces",serif;font-weight:500;
+  font-size:clamp(1.5rem,3.2vw,2.1rem);line-height:2.05;letter-spacing:-.01em;opacity:.32;transition:opacity .45s var(--ease)}
+.orp-row .pre{flex:1;text-align:right;color:var(--cream)}
+.orp-row .piv{width:1.2ch;text-align:center;color:var(--ember);font-weight:600;transition:text-shadow .4s}
+.orp-row .post{flex:1;text-align:left;color:var(--cream)}
+.orp-row.active{opacity:1}
+.orp-row.active .piv{text-shadow:0 0 22px rgba(255,82,48,.8)}
+.orp-cap{text-align:center;margin-top:18px;font-family:"JetBrains Mono",monospace;font-size:10.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+@media(max-width:860px){.orp{grid-template-columns:1fr;gap:34px}}
+
+/* ---------- reading-speed calculator ---------- */
+.calc{display:grid;grid-template-columns:.9fr 1.1fr;gap:40px;align-items:stretch}
+.calc-panel{border:1px solid var(--line);border-radius:22px;background:linear-gradient(180deg,var(--panel),var(--ink2));padding:34px 32px}
+.field{margin-bottom:30px}
+.field:last-child{margin-bottom:0}
+.field .frow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.field .flab{font-family:"Space Grotesk";font-size:14.5px;color:var(--cream);font-weight:500}
+.field .fval{font-family:"JetBrains Mono",monospace;font-size:14px;color:var(--amber);font-weight:500}
+.rng{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:100px;cursor:pointer;
+  background:linear-gradient(90deg,var(--amber) 0 var(--p,30%),var(--line) var(--p,30%) 100%)}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--cream);
+  border:3px solid var(--amber);cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.5);transition:transform .15s}
+.rng::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.rng::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--cream);border:3px solid var(--amber);cursor:pointer}
+.calc-out{border:1px solid var(--line2);border-radius:22px;padding:34px 32px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,rgba(245,166,35,.06),rgba(20,20,28,.4));display:flex;flex-direction:column;justify-content:center}
+.calc-out::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(80% 60% at 80% 0%,rgba(245,166,35,.12),transparent 60%)}
+.co-head{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;position:relative}
+.co-big{font-family:"Fraunces",serif;font-size:clamp(3rem,7vw,4.6rem);font-weight:600;line-height:1;
+  background:linear-gradient(120deg,var(--amber),var(--ember));-webkit-background-clip:text;background-clip:text;color:transparent;position:relative}
+.co-big .u{font-size:1.4rem;color:var(--cream);-webkit-text-fill-color:var(--cream);margin-left:8px}
+.co-delta{font-family:"Space Grotesk";font-size:15px;color:var(--mut);margin:8px 0 26px;position:relative}
+.co-delta b{color:var(--mint);font-weight:600}
+.bars{display:flex;flex-direction:column;gap:16px;position:relative}
+.barrow .brlab{display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:7px}
+.barrow .brlab b{color:var(--cream)}
+.bar{height:14px;border-radius:100px;background:var(--ink);border:1px solid var(--line);overflow:hidden}
+.bar .bf{height:100%;border-radius:100px;width:0;transition:width .7s var(--ease)}
+.bar.now .bf{background:linear-gradient(90deg,#43434f,#5b5b6a)}
+.bar.focal .bf{background:linear-gradient(90deg,var(--amber),var(--ember))}
+@media(max-width:860px){.calc{grid-template-columns:1fr}}
+
+/* ---------- comparison table ---------- */
+.cmp-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:20px;
+  background:linear-gradient(180deg,var(--panel),var(--ink2));-webkit-overflow-scrolling:touch}
+.cmp{width:100%;border-collapse:collapse;min-width:660px}
+.cmp caption{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.cmp th,.cmp td{padding:17px 22px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+.cmp tr:last-child th,.cmp tr:last-child td{border-bottom:0}
+.cmp thead th{font-family:"Space Grotesk";font-size:14.5px;font-weight:600;color:var(--cream);padding-top:22px;padding-bottom:22px}
+.cmp thead th .sub{display:block;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);font-weight:400;margin-top:4px}
+.cmp tbody th{font-family:"Space Grotesk";font-weight:500;font-size:14px;color:var(--cream);text-align:left;white-space:nowrap}
+.cmp td{color:var(--mut);font-size:14px}
+.cmp .cval{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--cream)}
+.cmp .ic-y{color:var(--amber);font-size:17px}.cmp .ic-n{color:#54545f;font-size:15px}.cmp .ic-m{color:var(--mut)}
+.cmp .fc{background:linear-gradient(180deg,rgba(245,166,35,.10),rgba(245,166,35,.025))}
+.cmp thead .fc{border-top:1px solid rgba(245,166,35,.5);border-radius:14px 14px 0 0;position:relative}
+.cmp tbody tr:last-child .fc{border-radius:0 0 14px 14px}
+.cmp .fc .cval{color:var(--amber)}
+.cmp thead .fc .focal-tag{display:inline-flex;align-items:center;gap:7px}
+.cmp thead .fc .focal-tag .dot{width:9px;height:9px;border-radius:50%;background:var(--ember);box-shadow:0 0 0 3px rgba(255,82,48,.2)}
+.cmp .badge-eff{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-family:"JetBrains Mono",monospace;
+  font-size:9px;letter-spacing:.1em;text-transform:uppercase;background:var(--amber);color:#1a1206;padding:3px 10px;border-radius:100px;white-space:nowrap}
+
+/* ---------- enterprise social proof ---------- */
+.proof-eyebrow{text-align:center;margin-bottom:30px}
+.marquee{overflow:hidden;position:relative;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.marquee .track{display:flex;gap:58px;width:max-content;animation:scrollx 34s linear infinite}
+.marquee:hover .track{animation-play-state:paused}
+@keyframes scrollx{to{transform:translateX(-50%)}}
+.logo{display:flex;align-items:center;gap:11px;color:var(--mut);font-family:"Space Grotesk",sans-serif;
+  font-weight:600;font-size:20px;letter-spacing:-.01em;opacity:.62;white-space:nowrap;transition:opacity .3s,color .3s}
+.logo:hover{opacity:1;color:var(--cream)}
+.logo svg{width:25px;height:25px;flex:none;color:var(--amber)}
+.quote{border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,var(--panel),var(--ink2));
+  padding:54px 52px 46px;text-align:center;max-width:900px;margin:64px auto 0;position:relative;overflow:hidden}
+.quote::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(80% 60% at 50% 0%,rgba(245,166,35,.08),transparent 60%)}
+.quote .mk{font-family:"Fraunces",serif;font-size:4.4rem;color:var(--amber);line-height:.2;display:block;height:34px}
+.quote blockquote{font-family:"Fraunces",serif;font-weight:400;font-size:clamp(1.35rem,2.5vw,1.95rem);
+  line-height:1.4;letter-spacing:-.01em;margin:18px auto 30px;max-width:24ch;color:var(--cream);position:relative}
+.quote blockquote em{font-style:italic;color:var(--amber)}
+.quote .by{display:inline-flex;align-items:center;gap:13px;position:relative}
+.quote .av{width:44px;height:44px;border-radius:50%;flex:none;
+  background:linear-gradient(140deg,var(--amber),var(--ember));display:flex;align-items:center;justify-content:center;
+  font-family:"Fraunces",serif;font-weight:600;color:#1a1206;font-size:18px}
+.quote .who{text-align:left}
+.quote .who b{font-family:"Space Grotesk";font-weight:600;font-size:15px;color:var(--cream);display:block}
+.quote .who span{font-size:13px;color:var(--mut)}
+.proof-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:34px}
+.proof-stats .ps{border:1px solid var(--line);border-radius:16px;background:rgba(14,14,19,.5);
+  padding:26px 20px;text-align:center}
+.proof-stats .num{font-family:"Fraunces",serif;font-size:clamp(1.8rem,3.4vw,2.6rem);font-weight:600;color:var(--cream);line-height:1}
+.proof-stats .num em{font-style:normal;color:var(--amber)}
+.proof-stats .lab{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim);margin-top:8px}
+@media(max-width:760px){.proof-stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ---------- FAQ accordion ---------- */
+.faq{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.qa{border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  background:linear-gradient(180deg,var(--panel),var(--ink2));transition:border-color .3s,box-shadow .3s}
+.qa.open{border-color:var(--line2);box-shadow:0 24px 60px -44px rgba(245,166,35,.5)}
+.qa-q{width:100%;display:flex;align-items:center;justify-content:space-between;gap:18px;
+  background:none;border:0;cursor:pointer;text-align:left;padding:22px 24px;color:var(--cream);
+  font-family:"Fraunces",serif;font-size:1.16rem;font-weight:500;letter-spacing:-.01em;transition:color .2s}
+.qa-q:hover{color:var(--amber)}
+.qa-q .chev{flex:none;width:28px;height:28px;border:1px solid var(--line2);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:var(--amber);
+  transition:transform .35s var(--ease),background .3s,border-color .3s}
+.qa.open .qa-q .chev{transform:rotate(180deg);background:rgba(245,166,35,.12);border-color:rgba(245,166,35,.5)}
+.qa-a{max-height:0;overflow:hidden;transition:max-height .42s var(--ease)}
+.qa-a .inner{padding:0 24px 24px;color:var(--mut);font-size:15px;line-height:1.66;max-width:66ch}
+.qa-a .inner b{color:var(--cream);font-weight:600}
+
+/* ---------- closing CTA band ---------- */
+.cta-band{position:relative;text-align:center;padding:108px 0 100px;overflow:hidden;
+  border-top:1px solid var(--line);
+  background:
+   radial-gradient(90% 130% at 50% 120%,rgba(245,166,35,.16),transparent 60%),
+   radial-gradient(70% 100% at 50% -10%,rgba(255,82,48,.12),transparent 55%)}
+.cta-band .reticle-mini{display:inline-flex;align-items:center;gap:14px;margin-bottom:30px;
+  padding:9px 18px;border:1px solid var(--line2);border-radius:100px;background:rgba(12,12,17,.55);backdrop-filter:blur(8px)}
+.cta-band .reticle-mini .w{font-family:"Fraunces",serif;font-size:18px;min-width:84px;text-align:center}
+.cta-band .reticle-mini .w .piv{color:var(--ember)}
+.cta-band .reticle-mini .lab{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.cta-band h2{font-size:clamp(2.6rem,7vw,5.2rem);line-height:1;letter-spacing:-.02em;margin:0 auto 8px;max-width:16ch}
+.cta-band h2 em{font-style:italic;color:var(--amber)}
+.cta-band p{color:var(--mut);font-size:clamp(1.05rem,2vw,1.25rem);max-width:50ch;margin:22px auto 36px}
+.cta-band .hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.cta-band .micro{margin-top:24px;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim);display:flex;gap:18px;justify-content:center;flex-wrap:wrap}
+.cta-band .micro span{display:inline-flex;align-items:center;gap:7px}
+.cta-band .micro .d{width:5px;height:5px;border-radius:50%;background:var(--mint)}
+
+/* ---------- footer ---------- */
+footer{padding:90px 0 40px;border-top:1px solid var(--line);margin-top:40px;position:relative}
+.foot-cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:30px;margin-bottom:60px}
+.foot-cols h5{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:0 0 16px}
+.foot-cols a{display:block;color:var(--mut);font-size:14px;padding:5px 0;transition:.2s}
+.foot-cols a:hover{color:var(--amber)}
+.foot-cols .blurb{color:var(--mut);font-size:14px;max-width:34ch}
+.wordmark{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(4rem,21vw,19rem);line-height:.82;
+  text-align:center;letter-spacing:-.03em;cursor:default;user-select:none;
+  background:linear-gradient(180deg,var(--cream),#41414e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wordmark span{display:inline-block;will-change:transform}
+.foot-base{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+  margin-top:30px;padding-top:24px;border-top:1px solid var(--line);color:var(--dim);font-size:13px}
+@media(max-width:760px){.foot-cols{grid-template-columns:1fr 1fr}}
+
+@media(prefers-reduced-motion:reduce){
+  .blob{animation:none}.reveal{opacity:1;transform:none;transition:none}.cursor-blink{animation:none}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#read">Skip to content</a>
+<div class="bg"><div class="blob a"></div><div class="blob b"></div><div class="blob c"></div></div>
+<div class="grid-overlay"></div>
+<div class="grain"></div>
+
+<header id="hdr">
+  <div class="wrap nav">
+    <div class="brand"><span class="dot"></span>Focal</div>
+    <nav class="nav-links">
+      <a href="#read">Read</a>
+      <a href="#market">Marketplace</a>
+      <a href="#api">API</a>
+      <a href="#try">Try it</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#enterprise">Enterprise</a>
+    </nav>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="/" class="nav-links" style="color:var(--mut);font-size:14px;padding:8px 6px">Open app</a>
+      <a class="btn btn-primary" href="/">Start reading</a>
+      <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<nav class="mobile-menu" id="mobileMenu" aria-hidden="true">
+  <button class="burger mm-close" id="burgerClose" aria-label="Close menu" aria-expanded="true"><span></span><span></span><span></span></button>
+  <a href="#read">Read</a>
+  <a href="#market">Marketplace</a>
+  <a href="#api">API</a>
+  <a href="#try">Try it</a>
+  <a href="#pricing">Pricing</a>
+  <a href="#enterprise">Enterprise</a>
+  <a class="btn btn-primary btn-lg mm-cta" href="/">Start reading free</a>
+</nav>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero" id="read">
+  <div class="wrap">
+    <div class="tag-row reveal">
+      <span class="chip">New</span>
+      <span class="pip">Focal Marketplace &amp; API are live &rarr;</span>
+    </div>
+
+    <div class="hero-grid">
+      <div class="hero-main">
+        <h1 class="reveal">The reading<br>layer for<br><em>the internet.</em></h1>
+      </div>
+      <div class="hero-side">
+        <p class="hero-sub reveal">A marketplace where authors sell, publishers list, and a speed-reading
+          API anyone can embed in three lines. Read everything at the speed of thought, then put that
+          power on your own site.</p>
+        <div class="hero-cta reveal">
+          <a class="btn btn-primary btn-lg" href="/">Start reading free</a>
+          <a class="btn btn-ghost btn-lg" href="#api">License the API &#8599;</a>
+        </div>
+        <div class="reticle reveal" id="reticle" aria-hidden="true">
+          <span class="guide top"></span><span class="guide bot"></span>
+          <div class="rsvp-word" id="rsvpWord"><span class="pre"></span><span class="piv">F</span><span class="post">ocal</span></div>
+          <div class="rsvp-meta">
+            <span><b id="wpm">480</b> wpm</span>
+            <span>ORP&nbsp;<b>aligned</b></span>
+            <span id="prog">word <b>01</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-stats reveal">
+      <div class="s"><div class="num" data-count="62000" data-suffix="+">62,000+</div><div class="lab">Titles to read</div></div>
+      <div class="s"><div class="num" data-count="1200" data-suffix="">1,200</div><div class="lab">Max words / min</div></div>
+      <div class="s"><div class="num">3 lines</div><div class="lab">To embed anywhere</div></div>
+      <div class="s"><div class="num">100%</div><div class="lab">Yours to monetize</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MARKETPLACE ===================== -->
+<section class="sec" id="market">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">The marketplace</span>
+      <h2>A storefront for <em>every author.</em></h2>
+      <p>List a title in minutes. Set your price, run promotions, and reach readers who finish books
+        because Focal makes finishing effortless. You keep the relationship — and the revenue.</p>
+    </div>
+    <div class="mk-grid">
+      <div class="card book tilt reveal"><div class="glow"></div>
+        <div class="cover"><div class="sheen"></div><div class="ttl">Deep Work,<br>Re-read</div></div>
+        <div class="row"><span class="author">by N. Cartwright</span><span class="price">$9</span></div>
+        <div class="meta"><span class="pill">Productivity</span><span class="pill">4.9★</span></div>
+      </div>
+      <div class="card book tilt reveal"><div class="glow"></div>
+        <div class="cover" style="background:linear-gradient(150deg,#101a22,#16242a)"><div class="sheen" style="background:radial-gradient(120% 60% at 20% 0%,rgba(124,140,255,.28),transparent 55%)"></div><div class="ttl">The Signal<br>Keepers</div></div>
+        <div class="row"><span class="author">by A. Okafor</span><span class="price">$14</span></div>
+        <div class="meta"><span class="pill">Sci-Fi</span><span class="pill">Bestseller</span></div>
+      </div>
+      <div class="card book tilt reveal"><div class="glow"></div>
+        <div class="cover" style="background:linear-gradient(150deg,#22101a,#2a1620)"><div class="sheen" style="background:radial-gradient(120% 60% at 20% 0%,rgba(255,82,48,.28),transparent 55%)"></div><div class="ttl">Letters to<br>a Founder</div></div>
+        <div class="row"><span class="author">by R. Mensah</span><span class="price">$7</span></div>
+        <div class="meta"><span class="pill">Essays</span><span class="pill">New</span></div>
+      </div>
+      <div class="mk-cta reveal">
+        <div><h3 class="serif">List your book on Focal</h3><p>Zero upfront. You set the price, we handle delivery, reading, and analytics.</p></div>
+        <a class="btn btn-primary" href="#">Become a seller →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== AUDIENCE SELECTOR ===================== -->
+<section class="sec" id="who">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">One platform, three jobs</span>
+      <h2>Built for everyone who <em>touches a page.</em></h2>
+    </div>
+    <div class="aud reveal">
+      <div class="aud-tabs" role="tablist" aria-label="Who Focal is for">
+        <button class="aud-tab active" role="tab" id="tab-r" aria-selected="true" aria-controls="panel-r">For Readers</button>
+        <button class="aud-tab" role="tab" id="tab-a" aria-selected="false" aria-controls="panel-a" tabindex="-1">For Authors</button>
+        <button class="aud-tab" role="tab" id="tab-d" aria-selected="false" aria-controls="panel-d" tabindex="-1">For Developers</button>
+      </div>
+      <div class="aud-panels">
+        <!-- Readers -->
+        <div class="aud-panel active" role="tabpanel" id="panel-r" aria-labelledby="tab-r" tabindex="0">
+          <div>
+            <h3>Finish every book you <em>start.</em></h3>
+            <p class="ap">Read at the speed of thought, keep your whole library in one place, and pick up exactly
+              where you left off — on any device, online or off.</p>
+            <ul class="aud-list"><li>700+ words per minute, your pace</li><li>62,000+ free titles, instantly</li>
+              <li>Bookmarks, highlights &amp; reading stats</li><li>Installable, offline-first PWA</li></ul>
+            <a class="btn btn-primary" href="/">Start reading free</a>
+          </div>
+          <div class="aud-vis">
+            <div class="vhead">Now reading · 2:14 left</div>
+            <div class="vis-reticle"><span>ev</span><span class="piv">e</span><span>rything</span></div>
+            <div class="vis-stats">
+              <div class="vs"><b>704</b><span>WPM</span></div>
+              <div class="vs"><b>62k</b><span>Titles</span></div>
+              <div class="vs"><b>∞</b><span>Offline</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- Authors -->
+        <div class="aud-panel" role="tabpanel" id="panel-a" aria-labelledby="tab-a" tabindex="0" hidden>
+          <div>
+            <h3>Sell your book to readers who <em>actually finish.</em></h3>
+            <p class="ap">Open a storefront in minutes, set your price, run promotions, and keep the relationship
+              with your readers — plus the lion's share of the revenue.</p>
+            <ul class="aud-list"><li>Your own storefront page</li><li>Keep 90% of every sale</li>
+              <li>Promotions &amp; bundle pricing</li><li>Reader-completion analytics</li></ul>
+            <a class="btn btn-primary" href="#pricing">Become a seller</a>
+          </div>
+          <div class="aud-vis vis-rev">
+            <div class="vhead">Your earnings · this month</div>
+            <div class="amt">$4,210</div>
+            <div class="delta">▲ 18% vs last month · 90% to you</div>
+            <div class="vis-spark"><i style="height:38%"></i><i style="height:52%"></i><i style="height:44%"></i><i style="height:66%"></i><i style="height:58%"></i><i style="height:80%"></i><i style="height:72%"></i><i style="height:100%"></i></div>
+            <div class="pillrow"><span class="pill">312 sold</span><span class="pill">4.9★ avg</span><span class="pill">87% finish rate</span></div>
+          </div>
+        </div>
+        <!-- Developers -->
+        <div class="aud-panel" role="tabpanel" id="panel-d" aria-labelledby="tab-d" tabindex="0" hidden>
+          <div>
+            <h3>Put speed-reading on your site in <em>three lines.</em></h3>
+            <p class="ap">Drop the Focal widget on any blog, doc, or store. License by page-view or seat, or
+              white-label the engine. Your brand, your readers — our reading core.</p>
+            <ul class="aud-list"><li>One-script embed widget</li><li>Streaming tokenize + ORP API</li>
+              <li>Metered billing &amp; usage dashboards</li><li>White-label on your domain</li></ul>
+            <a class="btn btn-ghost" href="#api" style="border-color:var(--iris);color:var(--iris)">Read the docs ↗</a>
+          </div>
+          <div class="aud-vis">
+            <div class="code">
+              <div class="bar"><i></i><i></i><i></i><span>embed.html</span></div>
+              <pre><span class="c">&lt;!-- one tag, any article --&gt;</span>
+<span class="k">&lt;script</span> <span class="a">src</span>=<span class="s">"https://focal.wiki/embed.js"</span><span class="k">&gt;&lt;/script&gt;</span>
+<span class="k">&lt;article</span> <span class="a">data-focal</span> <span class="a">data-wpm</span>=<span class="s">"600"</span><span class="k">&gt;</span> … <span class="k">&lt;/article&gt;</span></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== API ===================== -->
+<section class="sec" id="api">
+  <div class="wrap api">
+    <div class="reveal">
+      <span class="eyebrow">Focal API · for builders</span>
+      <h2 class="serif" style="font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.05;margin-top:16px">Put speed-reading <em class="iris" style="font-style:italic">on your site</em> in three lines.</h2>
+      <p style="color:var(--mut);font-size:1.08rem;margin-top:16px;max-width:48ch">Drop the Focal widget on any blog, docs page, or store. License by the page-view, the
+        seat, or white-label the whole engine. Your readers, your brand — our reading core.</p>
+      <div class="feat"><div class="ic">◇</div><div><h4>Embed widget</h4><p>One script tag turns any article into an RSVP experience.</p></div></div>
+      <div class="feat"><div class="ic">⌘</div><div><h4>Streaming API</h4><p>Tokenize, ORP-align, and stream words at any WPM you choose.</p></div></div>
+      <div class="feat"><div class="ic">⊞</div><div><h4>White-label</h4><p>Your colors, your domain, metered billing and usage analytics.</p></div></div>
+      <div style="margin-top:28px"><a class="btn btn-ghost btn-lg" href="#" style="border-color:var(--iris);color:var(--iris)">Read the API docs ↗</a></div>
+    </div>
+    <div class="code reveal">
+      <div class="bar"><i></i><i></i><i></i><span>your-blog.html</span></div>
+      <pre id="codeBlock"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TRY IT LIVE ===================== -->
+<section class="sec" id="try">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">Try it live</span>
+      <h2>Feel <em>800 words a minute.</em></h2>
+      <p style="margin-inline:auto">Pick a passage or paste your own. This is the exact widget you can embed —
+        running right here, in your browser. No sign-up, nothing leaves the page.</p>
+    </div>
+    <div class="player reveal">
+      <div class="stage">
+        <span class="pl-rail t"></span><span class="pl-rail b"></span>
+        <div class="pl-word" id="plWord"><span class="pre"></span><span class="piv">R</span><span class="post">eady</span></div>
+      </div>
+      <div class="pl-track"><div class="fill" id="plFill"></div></div>
+      <div class="pl-controls">
+        <button class="pl-play" id="plPlay" aria-label="Play"></button>
+        <div class="pl-wpm">
+          <span class="pl-meta">Speed</span>
+          <input type="range" id="plRange" min="200" max="1000" step="20" value="450" aria-label="Words per minute">
+          <span class="val" id="plVal">450 w/min</span>
+        </div>
+        <span class="pl-meta" id="plPos">0 / 0</span>
+      </div>
+      <div class="pl-samples" id="plSamples">
+        <button class="chipbtn active" data-i="0">Moby-Dick</button>
+        <button class="chipbtn" data-i="1">The Art of War</button>
+        <button class="chipbtn" data-i="2">Meditations</button>
+        <button class="chipbtn" data-i="3">Paste your own ↓</button>
+      </div>
+      <div class="pl-input">
+        <textarea class="pl-paste" id="plPaste" placeholder="Paste anything — an article, an email, a chapter — and read it here at the speed of thought."></textarea>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ORP EXPLAINER ===================== -->
+<section class="sec" id="how">
+  <div class="wrap orp">
+    <div class="reveal">
+      <span class="eyebrow">The science · ORP</span>
+      <h2 class="serif" style="font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.05;margin-top:16px">Your eyes don't
+        read words. They <em style="font-style:italic;color:var(--amber)">fixate</em> on them.</h2>
+      <p style="color:var(--mut);font-size:1.08rem;margin-top:16px;max-width:48ch">Normal reading burns time on
+        <i>saccades</i> — the tiny jumps your eyes make between words. Focal removes the jumps entirely: it flashes
+        one word at a time and pins each word's <b style="color:var(--cream)">Optimal Recognition Point</b> to the
+        exact same spot. Your eye never moves. Recognition becomes instant.</p>
+      <div class="feat"><div class="ix">01</div><div><h4>Zero saccades</h4><p>No left-to-right scanning — the words come to you.</p></div></div>
+      <div class="feat"><div class="ix">02</div><div><h4>Pivot-aligned</h4><p>The red letter is the ORP, locked to the crosshair on every word.</p></div></div>
+      <div class="feat"><div class="ix">03</div><div><h4>Full comprehension</h4><p>Your brain recognizes the whole word from its pivot — faster, not shallower.</p></div></div>
+    </div>
+    <div class="reveal">
+      <div class="orp-scope" id="orpScope">
+        <div class="orp-axis"></div>
+        <div class="orp-rows">
+          <div class="orp-row"><span class="pre">r</span><span class="piv">e</span><span class="post">ad</span></div>
+          <div class="orp-row"><span class="pre">fa</span><span class="piv">s</span><span class="post">ter</span></div>
+          <div class="orp-row"><span class="pre">eve</span><span class="piv">r</span><span class="post">ything</span></div>
+          <div class="orp-row"><span class="pre">kn</span><span class="piv">o</span><span class="post">wledge</span></div>
+          <div class="orp-row"><span class="pre">F</span><span class="piv">o</span><span class="post">cal</span></div>
+        </div>
+      </div>
+      <div class="orp-cap">↑ every pivot lands on the same vertical axis ↑</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CALCULATOR ===================== -->
+<section class="sec" id="calc">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">The math of reading faster</span>
+      <h2>How many books are you <em>leaving on the table?</em></h2>
+      <p style="margin-inline:auto">Most people read at 250 words a minute. Focal readers cruise at 700+.
+        Move the sliders — watch a year of reading change.</p>
+    </div>
+    <div class="calc reveal">
+      <div class="calc-panel">
+        <div class="field">
+          <div class="frow"><span class="flab">Hours you read per week</span><span class="fval" id="vHrs">5 hrs</span></div>
+          <input type="range" class="rng" id="rHrs" min="1" max="21" step="1" value="5" aria-label="Hours read per week">
+        </div>
+        <div class="field">
+          <div class="frow"><span class="flab">Your reading speed today</span><span class="fval" id="vNow">250 wpm</span></div>
+          <input type="range" class="rng" id="rNow" min="150" max="450" step="10" value="250" aria-label="Current reading speed">
+        </div>
+        <div class="field">
+          <div class="frow"><span class="flab">Your speed with Focal</span><span class="fval" id="vFoc">700 wpm</span></div>
+          <input type="range" class="rng" id="rFoc" min="400" max="1000" step="20" value="700" aria-label="Focal reading speed">
+        </div>
+      </div>
+      <div class="calc-out">
+        <div class="co-head">With Focal you'd finish</div>
+        <div class="co-big"><span id="coBooks">66</span><span class="u">books / year</span></div>
+        <div class="co-delta">That's <b id="coDelta">+42</b> more than the <span id="coNow">24</span> you'd read today.</div>
+        <div class="bars">
+          <div class="barrow"><div class="brlab"><span>Today</span><b id="brNowN">24 books</b></div><div class="bar now"><div class="bf" id="bfNow"></div></div></div>
+          <div class="barrow"><div class="brlab"><span class="amber">With Focal</span><b id="brFocN">66 books</b></div><div class="bar focal"><div class="bf" id="bfFoc"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== COMPARISON ===================== -->
+<section class="sec" id="compare">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">The honest comparison</span>
+      <h2>Three ways to get through a book. <em>One</em> that respects your time.</h2>
+      <p style="margin-inline:auto">Audiobooks free your hands. Paper feels nice. Focal is simply the fastest
+        path from <i>page</i> to <i>understood</i> — and the only one you can put on your own site.</p>
+    </div>
+    <div class="cmp-wrap reveal">
+      <table class="cmp">
+        <caption>Comparison of Focal, traditional reading, and audiobooks</caption>
+        <thead>
+          <tr>
+            <th scope="col" style="text-align:left">&nbsp;</th>
+            <th scope="col" class="fc"><span class="badge-eff">Most efficient</span><span class="focal-tag"><span class="dot"></span>Focal</span><span class="sub">RSVP reading</span></th>
+            <th scope="col">Traditional<span class="sub">Paper / e-ink</span></th>
+            <th scope="col">Audiobooks<span class="sub">Narrated</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Effective speed</th><td class="fc"><span class="cval">700+ wpm</span></td><td><span class="cval">250 wpm</span></td><td><span class="cval">~160 wpm</span></td></tr>
+          <tr><th scope="row">Eliminates eye movement</th><td class="fc"><span class="ic-y">✓</span></td><td><span class="ic-n">✕</span></td><td><span class="ic-m">—</span></td></tr>
+          <tr><th scope="row">Read silently, anywhere</th><td class="fc"><span class="ic-y">✓</span></td><td><span class="ic-y">✓</span></td><td><span class="ic-n">✕</span></td></tr>
+          <tr><th scope="row">Skim, pause &amp; re-read</th><td class="fc"><span class="ic-y">✓</span></td><td><span class="ic-y">✓</span></td><td><span class="ic-n">✕</span></td></tr>
+          <tr><th scope="row">Comprehension retention</th><td class="fc"><span class="cval">High</span></td><td><span class="cval">High</span></td><td><span class="cval ic-m">Medium</span></td></tr>
+          <tr><th scope="row">Typical finish rate</th><td class="fc"><span class="cval">2.4×</span></td><td><span class="cval">1.0×</span></td><td><span class="cval">1.3×</span></td></tr>
+          <tr><th scope="row">Embed &amp; license (API)</th><td class="fc"><span class="ic-y">✓</span></td><td><span class="ic-n">✕</span></td><td><span class="ic-n">✕</span></td></tr>
+          <tr><th scope="row">Starting price</th><td class="fc"><span class="cval">Free</span></td><td><span class="cval ic-m">Per book</span></td><td><span class="cval ic-m">Subscription</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SOCIAL PROOF ===================== -->
+<section class="sec" id="enterprise" style="padding-top:40px">
+  <div class="wrap">
+    <div class="proof-eyebrow reveal"><span class="eyebrow">Trusted by reading teams at</span></div>
+    <div class="marquee reveal" aria-hidden="true">
+      <div class="track" id="logoTrack"></div>
+    </div>
+
+    <div class="quote reveal">
+      <span class="mk">“</span>
+      <blockquote>We embedded Focal across our docs in an afternoon. Completion rates jumped <em>2.4×</em>
+        — people actually <em>finish</em> now.</blockquote>
+      <div class="by">
+        <div class="av">DR</div>
+        <div class="who"><b>Dana Reyes</b><span>VP Content, Meridian Publishing</span></div>
+      </div>
+    </div>
+
+    <div class="proof-stats">
+      <div class="ps reveal"><div class="num" data-count="4200000" data-suffix="">4,200,000</div><div class="lab">Words read / day</div></div>
+      <div class="ps reveal"><div class="num" data-count="1800" data-suffix="+">1,800+</div><div class="lab">Sites embedding</div></div>
+      <div class="ps reveal"><div class="num"><em>2.4×</em></div><div class="lab">Completion lift</div></div>
+      <div class="ps reveal"><div class="num" data-count="99" data-suffix=".9%">99.9%</div><div class="lab">API uptime</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PRICING ===================== -->
+<section class="sec" id="pricing">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">Pricing</span>
+      <h2>Read for free. <em>Sell</em> for more.</h2>
+      <p style="margin-inline:auto">From a free reader to a white-labeled API powering thousands of pages.
+        Every paid plan keeps the reader experience pristine — you only pay to publish, sell, and scale.</p>
+      <div class="bill reveal" id="bill">
+        <button class="bseg active" data-cycle="mo">Monthly</button>
+        <button class="bseg" data-cycle="yr">Annual <span class="save">−20%</span></button>
+      </div>
+    </div>
+    <div class="price-grid">
+      <div class="tier reveal">
+        <div class="name">Reader</div>
+        <div class="price"><span class="amt" data-mo="$0" data-yr="$0">$0</span><span class="per">forever</span></div>
+        <div class="t-sub">Everything you need to read at the speed of thought.</div>
+        <ul class="t-list">
+          <li>Unlimited RSVP reading</li><li>62,000+ public-domain titles</li>
+          <li>Bookmarks, highlights, stats</li><li>Offline PWA on every device</li>
+        </ul>
+        <a class="btn btn-ghost" href="/" style="margin-top:auto">Start reading</a>
+      </div>
+      <div class="tier reveal">
+        <div class="name">Author</div>
+        <div class="price"><span class="amt" data-mo="$19" data-yr="$15">$19</span><span class="per">/mo</span></div>
+        <div class="t-sub">A storefront for your books, with the tools to sell them.</div>
+        <ul class="t-list">
+          <li>Everything in Reader</li><li>Your own storefront page</li>
+          <li>Set prices &amp; run promotions</li><li>Reader analytics · 90% revenue</li>
+        </ul>
+        <a class="btn btn-ghost" href="#" style="margin-top:auto">Become a seller</a>
+      </div>
+      <div class="tier feat reveal">
+        <div class="badge">Most popular</div>
+        <div class="name">Publisher</div>
+        <div class="price"><span class="amt" data-mo="$99" data-yr="$79">$99</span><span class="per">/mo</span></div>
+        <div class="t-sub">Run a catalog, a team, and a featured presence.</div>
+        <ul class="t-list">
+          <li>Everything in Author</li><li>Bulk catalog &amp; team seats</li>
+          <li>Featured placement</li><li>Advanced revenue analytics</li>
+        </ul>
+        <a class="btn btn-primary" href="#" style="margin-top:auto">Start a catalog</a>
+      </div>
+      <div class="tier reveal">
+        <div class="name iris" style="color:var(--iris)">Enterprise API</div>
+        <div class="price"><span class="amt">Custom</span></div>
+        <div class="t-sub">White-label the reading engine across your product.</div>
+        <ul class="t-list">
+          <li>Metered embed &amp; streaming API</li><li>White-label · your domain</li>
+          <li>SSO, SLA &amp; dedicated support</li><li>Usage dashboards &amp; invoicing</li>
+        </ul>
+        <a class="btn btn-ghost" href="#" style="margin-top:auto;border-color:var(--iris);color:var(--iris)">Talk to sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FAQ ===================== -->
+<section class="sec" id="faq">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">Questions</span>
+      <h2>Everything you were <em>about to ask.</em></h2>
+    </div>
+    <div class="faq reveal">
+      <div class="qa">
+        <button class="qa-q" aria-expanded="false" aria-controls="fa1">Is comprehension as good as normal reading?<span class="chev"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 9l7 7 7-7"/></svg></span></button>
+        <div class="qa-a" id="fa1" role="region"><div class="inner">Yes — often better. Focal keeps every word whole and pins its <b>Optimal Recognition Point</b> so your brain identifies it instantly, with none of the regressions and wandering that slow normal reading. You set the pace, and you can pause or replay any line.</div></div>
+      </div>
+      <div class="qa">
+        <button class="qa-q" aria-expanded="false" aria-controls="fa2">Can I sell my own book on Focal?<span class="chev"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 9l7 7 7-7"/></svg></span></button>
+        <div class="qa-a" id="fa2" role="region"><div class="inner">Absolutely. Open an <b>Author storefront</b>, upload your manuscript, set your price, and run promotions. You keep <b>90% of revenue</b> — Focal handles delivery, the reading experience, and your analytics.</div></div>
+      </div>
+      <div class="qa">
+        <button class="qa-q" aria-expanded="false" aria-controls="fa3">How does the API pricing work?<span class="chev"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 9l7 7 7-7"/></svg></span></button>
+        <div class="qa-a" id="fa3" role="region"><div class="inner">License by <b>page-view</b>, by <b>seat</b>, or white-label the whole engine. Metered billing with a generous free tier — you only pay as your embeds actually get read. Volume and enterprise terms are a conversation away.</div></div>
+      </div>
+      <div class="qa">
+        <button class="qa-q" aria-expanded="false" aria-controls="fa4">Does it work offline?<span class="chev"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 9l7 7 7-7"/></svg></span></button>
+        <div class="qa-a" id="fa4" role="region"><div class="inner">Yes. Focal is a <b>progressive web app</b> — install it on any device and your library, bookmarks, highlights, and reading stats stay available offline and sync when you reconnect.</div></div>
+      </div>
+      <div class="qa">
+        <button class="qa-q" aria-expanded="false" aria-controls="fa5">What can I actually read on it?<span class="chev"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 9l7 7 7-7"/></svg></span></button>
+        <div class="qa-a" id="fa5" role="region"><div class="inner">Paste any text, import <b>EPUB or TXT</b>, choose from <b>62,000+ public-domain titles</b>, or buy from the marketplace. With the embed widget, any web article becomes an RSVP session in one click.</div></div>
+      </div>
+      <div class="qa">
+        <button class="qa-q" aria-expanded="false" aria-controls="fa6">Can I white-label it for my product?<span class="chev"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 9l7 7 7-7"/></svg></span></button>
+        <div class="qa-a" id="fa6" role="region"><div class="inner">On <b>Enterprise</b> plans, yes — ship Focal under your own brand and domain, with your colors and logo over our reading core, plus <b>SSO, an SLA, and usage dashboards</b>.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CLOSING CTA ===================== -->
+<section class="cta-band">
+  <div class="wrap">
+    <div class="reticle-mini reveal" aria-hidden="true">
+      <span class="w" id="ctaWord"><span class="pre"></span><span class="piv">r</span><span class="post">ead</span></span>
+      <span class="lab">live · 700 wpm</span>
+    </div>
+    <h2 class="reveal">The whole library, at the <em>speed of thought.</em></h2>
+    <p class="reveal">Start reading free in your browser. Sell your books, embed the API, and never
+      leave a page unfinished again.</p>
+    <div class="hero-cta reveal">
+      <a class="btn btn-primary btn-lg" href="/">Start reading free</a>
+      <a class="btn btn-ghost btn-lg" href="#pricing">See pricing</a>
+    </div>
+    <div class="micro reveal">
+      <span><span class="d"></span>No account needed</span>
+      <span><span class="d"></span>62,000+ titles</span>
+      <span><span class="d"></span>Embed in 3 lines</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer id="contact">
+  <div class="wrap">
+    <div class="foot-cols">
+      <div>
+        <div class="brand" style="margin-bottom:14px"><span class="dot"></span>Focal</div>
+        <p class="blurb">The reading layer for the internet. A marketplace for books and a licensable
+          speed-reading API — built for readers, authors, and the teams who serve them.</p>
+      </div>
+      <div><h5>Product</h5><a href="#read">Reader</a><a href="#market">Marketplace</a><a href="#api">API</a><a href="#pricing">Pricing</a></div>
+      <div><h5>Sell</h5><a href="#">Become a seller</a><a href="#">Publisher tools</a><a href="#">Promotions</a><a href="#">Analytics</a></div>
+      <div><h5>Company</h5><a href="#">Enterprise</a><a href="#">Docs</a><a href="#">Status</a><a href="#">Contact</a></div>
+    </div>
+    <div class="wordmark" id="wordmark">Focal</div>
+    <div class="foot-base">
+      <span>© 2026 Focal — read everything.</span>
+      <span class="mono" style="font-size:11px;letter-spacing:.1em;color:var(--dim)">FOCAL.WIKI · v3</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SHOT = location.search.indexOf('still') > -1; // render final state for screenshots
+
+/* ---- ORP pivot index (classic RSVP) ---- */
+function pivot(w){const n=w.length;if(n<=1)return 0;if(n<=5)return 1;if(n<=9)return 2;if(n<=13)return 3;return 4;}
+
+/* ---- live RSVP hero ---- */
+(function(){
+  const phrase = "The reading layer for the internet a marketplace and an API for everything you read".split(' ');
+  const wEl=document.getElementById('rsvpWord');
+  const pre=wEl.querySelector('.pre'),piv=wEl.querySelector('.piv'),post=wEl.querySelector('.post');
+  const prog=document.querySelector('#prog b');
+  let i=0;
+  function show(){
+    const w=phrase[i%phrase.length];const p=pivot(w);
+    pre.textContent=w.slice(0,p);piv.textContent=w[p]||'';post.textContent=w.slice(p+1);
+    if(prog)prog.textContent=String((i%phrase.length)+1).padStart(2,'0');
+    i++;
+  }
+  show();
+  if(!RM){
+    // pace varies a touch with word length for a natural cadence
+    function loop(){ show(); const w=phrase[(i-1)%phrase.length]; setTimeout(loop, 230 + w.length*16); }
+    setTimeout(loop, 700);
+  }
+})();
+
+/* ---- three-audience tabs (a11y: roving tabindex + arrow keys) ---- */
+(function(){
+  const tablist=document.querySelector('#who .aud-tabs');if(!tablist)return;
+  const tabs=[...tablist.querySelectorAll('.aud-tab')];
+  const panels=tabs.map(t=>document.getElementById(t.getAttribute('aria-controls')));
+  function select(idx,focus){
+    tabs.forEach((t,i)=>{const on=i===idx;
+      t.classList.toggle('active',on);t.setAttribute('aria-selected',on);t.tabIndex=on?0:-1;
+      panels[i].classList.toggle('active',on);panels[i].hidden=!on;});
+    if(focus)tabs[idx].focus();
+  }
+  tabs.forEach((t,i)=>{
+    t.addEventListener('click',()=>select(i,false));
+    t.addEventListener('keydown',e=>{
+      if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();select((i+1)%tabs.length,true);}
+      else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();select((i-1+tabs.length)%tabs.length,true);}
+      else if(e.key==='Home'){e.preventDefault();select(0,true);}
+      else if(e.key==='End'){e.preventDefault();select(tabs.length-1,true);}
+    });
+  });
+})();
+
+/* ---- mobile menu ---- */
+(function(){
+  const burger=document.getElementById('burger'),menu=document.getElementById('mobileMenu'),
+        close=document.getElementById('burgerClose');
+  if(!burger||!menu)return;
+  function set(open){
+    menu.classList.toggle('open',open);
+    burger.setAttribute('aria-expanded',open);
+    menu.setAttribute('aria-hidden',!open);
+    document.body.style.overflow=open?'hidden':'';
+    if(open){const f=menu.querySelector('a');if(f)f.focus();}else burger.focus();
+  }
+  burger.addEventListener('click',()=>set(!menu.classList.contains('open')));
+  close.addEventListener('click',()=>set(false));
+  menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>set(false)));
+  addEventListener('keydown',e=>{if(e.key==='Escape'&&menu.classList.contains('open'))set(false);});
+  if(location.search.indexOf('menu')>-1)set(true); // screenshot hook
+})();
+
+/* ---- closing CTA mini live-RSVP echo ---- */
+(function(){
+  const el=document.getElementById('ctaWord');if(!el)return;
+  const pre=el.querySelector('.pre'),piv=el.querySelector('.piv'),post=el.querySelector('.post');
+  const phrase="read everything at the speed of thought".split(' ');let i=0;
+  function show(){const w=phrase[i%phrase.length],p=pivot(w);
+    pre.textContent=w.slice(0,p);piv.textContent=w[p]||'';post.textContent=w.slice(p+1);i++;}
+  show();
+  if(!RM&&!SHOT)setInterval(show,360);
+})();
+
+/* ---- header scrolled state ---- */
+const hdr=document.getElementById('hdr');
+addEventListener('scroll',()=>hdr.classList.toggle('scrolled',scrollY>20),{passive:true});
+
+/* ---- scroll reveals ---- */
+const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}})},{threshold:.12,rootMargin:'0px 0px -8% 0px'});
+document.querySelectorAll('.reveal').forEach((el,n)=>{el.style.transitionDelay=(Math.min(n,6)*60)+'ms';io.observe(el);});
+if(SHOT){document.querySelectorAll('.reveal').forEach(e=>{e.style.transitionDelay='0ms';e.classList.add('in');});
+  document.querySelectorAll('.num[data-count]').forEach(el=>el.textContent=(+el.dataset.count).toLocaleString()+(el.dataset.suffix||''));}
+
+/* ---- count-up stats ---- */
+function countUp(el){
+  const target=+el.dataset.count, suffix=el.dataset.suffix||''; const dur=1200; const t0=performance.now();
+  function step(t){const k=Math.min(1,(t-t0)/dur); const v=Math.floor((1-Math.pow(1-k,3))*target);
+    el.textContent=v.toLocaleString()+suffix; if(k<1)requestAnimationFrame(step);}
+  requestAnimationFrame(step);
+}
+const statIO=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){countUp(e.target);statIO.unobserve(e.target);}})},{threshold:.6});
+document.querySelectorAll('.num[data-count]').forEach(el=>{if(!RM&&!SHOT)statIO.observe(el);});
+
+/* ---- 3D tilt cards ---- */
+document.querySelectorAll('.tilt').forEach(card=>{
+  card.addEventListener('pointermove',e=>{
+    const r=card.getBoundingClientRect();const mx=(e.clientX-r.left)/r.width,my=(e.clientY-r.top)/r.height;
+    card.style.setProperty('--mx',(mx*100)+'%');card.style.setProperty('--my',(my*100)+'%');
+    if(RM)return;
+    card.style.transform=`perspective(900px) rotateY(${(mx-.5)*9}deg) rotateX(${-(my-.5)*9}deg) translateY(-4px)`;
+  });
+  card.addEventListener('pointerleave',()=>{card.style.transform='';});
+});
+
+/* ---- typing code in the API section ---- */
+(function(){
+  const lines=[
+    ['c','<!-- 1. add the script -->'],
+    ['',`<span class="k">&lt;script</span> <span class="a">src</span>=<span class="s">"https://focal.wiki/embed.js"</span><span class="k">&gt;&lt;/script&gt;</span>`],
+    ['',''],
+    ['c','<!-- 2. mark any text -->'],
+    ['',`<span class="k">&lt;article</span> <span class="a">data-focal</span> <span class="a">data-wpm</span>=<span class="s">"500"</span><span class="k">&gt;</span>`],
+    ['','  Your readers can now speed-read this…'],
+    ['',`<span class="k">&lt;/article&gt;</span>`],
+    ['',''],
+    ['c','<!-- 3. (optional) monetize it -->'],
+    ['',`<span class="k">focal</span>.<span class="a">license</span>(<span class="s">"pk_live_..."</span>, { meter: <span class="s">"per_view"</span> });`],
+  ];
+  const pre=document.getElementById('codeBlock');
+  if(RM||SHOT){pre.innerHTML=lines.map(l=>`<span class="${l[0]}">${l[1]}</span>`).join('\n');return;}
+  let li=0;
+  function typeLine(){
+    if(li>=lines.length){const c=document.createElement('span');c.className='cursor-blink';pre.appendChild(c);return;}
+    const [cls,html]=lines[li];const span=document.createElement('span');span.className=cls;pre.appendChild(span);
+    // reveal the line by character for a "writing" feel, but keep HTML tags intact
+    span.innerHTML=html; span.style.opacity='0'; span.style.transition='opacity .25s';
+    requestAnimationFrame(()=>span.style.opacity='1');
+    pre.appendChild(document.createTextNode('\n')); li++;
+    setTimeout(typeLine, html?260:90);
+  }
+  const apiIO=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){typeLine();apiIO.unobserve(e.target);}})},{threshold:.4});
+  apiIO.observe(pre);
+})();
+
+/* ---- live playground: a real, playable RSVP widget ---- */
+(function(){
+  const samples=[
+    {t:"Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen, and regulating the circulation."},
+    {t:"The art of war is of vital importance to the State. It is a matter of life and death, a road either to safety or to ruin. Hence it is a subject of inquiry which can on no account be neglected. The general who wins a battle makes many calculations in his temple before the battle is fought."},
+    {t:"When you arise in the morning, think of what a precious privilege it is to be alive—to breathe, to think, to enjoy, to love. You have power over your mind, not outside events. Realize this, and you will find strength. The happiness of your life depends upon the quality of your thoughts."},
+    {t:""}
+  ];
+  const wEl=document.getElementById('plWord'); if(!wEl)return;
+  const pre=wEl.querySelector('.pre'),piv=wEl.querySelector('.piv'),post=wEl.querySelector('.post');
+  const playBtn=document.getElementById('plPlay'),range=document.getElementById('plRange'),
+        val=document.getElementById('plVal'),pos=document.getElementById('plPos'),
+        fill=document.getElementById('plFill'),paste=document.getElementById('plPaste'),
+        samplesEl=document.getElementById('plSamples');
+  let words=[],idx=0,playing=false,timer=null,wpm=+range.value;
+  const PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  const PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
+  playBtn.innerHTML=PLAY;
+  function setWords(t){words=(t||'').trim().split(/\s+/).filter(Boolean);idx=0;render();updatePos();}
+  function render(){const w=words[idx]||'Ready';const p=pivot(w);
+    pre.textContent=w.slice(0,p);piv.textContent=w[p]||'';post.textContent=w.slice(p+1);
+    fill.style.width=(words.length?(idx/words.length*100):0)+'%';}
+  function updatePos(){pos.textContent=(words.length?Math.min(idx+1,words.length):0)+' / '+words.length;}
+  function delay(w){let d=60000/wpm;if(w.length>8)d*=1.25;if(/[.,;:!?—]$/.test(w))d*=1.9;return d;}
+  function step(){
+    if(idx>=words.length){idx=words.length;render();updatePos();fill.style.width='100%';stop();return;}
+    render();updatePos();const w=words[idx];idx++;timer=setTimeout(step,delay(w));}
+  function play(){if(!words.length)return;if(idx>=words.length)idx=0;playing=true;
+    playBtn.innerHTML=PAUSE;playBtn.setAttribute('aria-label','Pause');step();}
+  function stop(){playing=false;playBtn.innerHTML=PLAY;playBtn.setAttribute('aria-label','Play');if(timer)clearTimeout(timer);}
+  playBtn.addEventListener('click',()=>playing?stop():play());
+  range.addEventListener('input',()=>{wpm=+range.value;val.textContent=wpm+' w/min';});
+  paste.addEventListener('input',()=>{stop();setWords(paste.value);
+    samplesEl.querySelectorAll('.chipbtn').forEach(c=>c.classList.toggle('active',c.dataset.i==='3'));});
+  samplesEl.addEventListener('click',e=>{const b=e.target.closest('.chipbtn');if(!b)return;
+    samplesEl.querySelectorAll('.chipbtn').forEach(c=>c.classList.remove('active'));b.classList.add('active');
+    stop();const i=+b.dataset.i;
+    if(i===3){setWords(paste.value);paste.focus();}else setWords(samples[i].t);});
+  setWords(samples[0].t);
+  if(SHOT){idx=Math.max(0,Math.floor(words.length*.32));render();updatePos();fill.style.width='32%';}
+})();
+
+/* ---- ORP explainer: cycle the active row like the reader does ---- */
+(function(){
+  const rows=[...document.querySelectorAll('#orpScope .orp-row')];if(!rows.length)return;
+  if(RM||SHOT){rows[2].classList.add('active');return;} // freeze on "everything" for stills
+  let i=0;
+  function tick(){rows.forEach((r,n)=>r.classList.toggle('active',n===i));i=(i+1)%rows.length;}
+  tick(); setInterval(tick,1050);
+})();
+
+/* ---- reading-speed calculator ---- */
+(function(){
+  const rHrs=document.getElementById('rHrs');if(!rHrs)return;
+  const rNow=document.getElementById('rNow'),rFoc=document.getElementById('rFoc');
+  const vHrs=document.getElementById('vHrs'),vNow=document.getElementById('vNow'),vFoc=document.getElementById('vFoc');
+  const coBooks=document.getElementById('coBooks'),coDelta=document.getElementById('coDelta'),coNow=document.getElementById('coNow');
+  const brNowN=document.getElementById('brNowN'),brFocN=document.getElementById('brFocN'),
+        bfNow=document.getElementById('bfNow'),bfFoc=document.getElementById('bfFoc');
+  const BOOK=90000; // words in an average book
+  function paint(el){const min=+el.min,max=+el.max,p=((+el.value-min)/(max-min))*100;el.style.setProperty('--p',p+'%');}
+  function books(wpm){return Math.round((+rHrs.value*60*wpm*52)/BOOK);}
+  function update(){
+    [rHrs,rNow,rFoc].forEach(paint);
+    vHrs.textContent=rHrs.value+' hr'+(rHrs.value==1?'':'s');
+    vNow.textContent=rNow.value+' wpm'; vFoc.textContent=rFoc.value+' wpm';
+    const now=books(+rNow.value), foc=books(+rFoc.value), delta=Math.max(0,foc-now);
+    coBooks.textContent=foc; coNow.textContent=now; coDelta.textContent='+'+delta;
+    brNowN.textContent=now+' book'+(now==1?'':'s'); brFocN.textContent=foc+' book'+(foc==1?'':'s');
+    const peak=Math.max(foc,1);
+    bfNow.style.width=(now/peak*100)+'%'; bfFoc.style.width='100%';
+  }
+  [rHrs,rNow,rFoc].forEach(r=>r.addEventListener('input',update));
+  update();
+})();
+
+/* ---- logo marquee (seamless: render the set twice, translate -50%) ---- */
+(function(){
+  const track=document.getElementById('logoTrack');if(!track)return;
+  const ic={
+    book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5a2 2 0 0 1 2-2h6v18H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-6v18h6a2 2 0 0 1 2 2z"/></svg>',
+    sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
+    compass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M16 8l-5 2-2 6 5-2z" fill="currentColor" stroke="none"/></svg>',
+    layers:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+    feather:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 4C11 4 6 9 6 18l-2 2M14 6l-7 7M19 9h-5"/></svg>',
+    leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20c0-9 7-15 16-15 0 9-6 15-15 15M4 20c4-6 8-9 12-10"/></svg>',
+    grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+    bolt:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>'
+  };
+  const brands=[['compass','Northwind'],['book','Atlas Press'],['sun','Lumen'],['layers','Strata'],
+    ['feather','Quillstone'],['leaf','Verbena'],['grid','Meridian'],['bolt','Halcyon Labs']];
+  const set=brands.map(([k,n])=>`<span class="logo">${ic[k]}${n}</span>`).join('');
+  track.innerHTML=set+set; // doubled for the -50% seamless loop
+  if(RM||SHOT)track.style.animation='none';
+})();
+
+/* ---- FAQ accordion ---- */
+(function(){
+  const items=[...document.querySelectorAll('#faq .qa')];if(!items.length)return;
+  function setOpen(qa,open,instant){
+    qa.classList.toggle('open',open);
+    qa.querySelector('.qa-q').setAttribute('aria-expanded',open);
+    const p=qa.querySelector('.qa-a');
+    p.style.maxHeight = open ? (instant?'none':p.scrollHeight+'px') : '0';
+  }
+  items.forEach(qa=>qa.querySelector('.qa-q').addEventListener('click',
+    ()=>setOpen(qa,!qa.classList.contains('open'),false)));
+  if(SHOT){setOpen(items[0],true,true);if(items[1])setOpen(items[1],true,true);}
+  else setOpen(items[0],true,true); // first item open by default
+})();
+
+/* ---- pricing billing toggle ---- */
+(function(){
+  const bill=document.getElementById('bill');if(!bill)return;
+  const segs=bill.querySelectorAll('.bseg');
+  bill.addEventListener('click',e=>{const b=e.target.closest('.bseg');if(!b)return;
+    segs.forEach(s=>s.classList.remove('active'));b.classList.add('active');
+    const cyc=b.dataset.cycle;
+    document.querySelectorAll('.tier .amt').forEach(a=>{
+      const v=a.dataset[cyc];if(v===undefined)return;
+      a.textContent=v;a.classList.remove('flip');void a.offsetWidth;a.classList.add('flip');
+    });
+  });
+})();
+
+/* ---- footer wordmark: letters repel the cursor ---- */
+(function(){
+  const wm=document.getElementById('wordmark');const txt=wm.textContent;wm.textContent='';
+  const spans=[...txt].map(ch=>{const s=document.createElement('span');s.textContent=ch;wm.appendChild(s);return s;});
+  if(RM)return;
+  let raf=null;
+  wm.addEventListener('pointermove',e=>{
+    if(raf)return; raf=requestAnimationFrame(()=>{
+      raf=null;
+      spans.forEach(s=>{const r=s.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;
+        const dx=e.clientX-cx,dy=e.clientY-cy;const d=Math.hypot(dx,dy);const rad=200;
+        if(d<rad){const f=(1-d/rad);s.style.transform=`translate(${-dx*f*.5}px,${-dy*f*.5}px)`;}
+        else s.style.transform='';});
+    });
+  });
+  wm.addEventListener('pointerleave',()=>spans.forEach(s=>s.style.transform=''));
+})();
+</script>
+</body>
+</html>

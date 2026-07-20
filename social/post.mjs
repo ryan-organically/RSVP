@@ -34,15 +34,37 @@ function loadEnv() {
 }
 loadEnv();
 
+// ---- platform groups + caption presets ----
+const PLATFORM_SETS = {
+  'all-free': ['bluesky', 'mastodon', 'youtube'],      // free, no server, works today via --direct
+  'all': ['bluesky', 'mastodon', 'youtube', 'x', 'linkedin', 'facebook', 'tiktok', 'instagram'],
+};
+const CAPTIONS = {
+  launch: 'New: RSVP Reader. Read books, PDFs, and articles one word at a time, as fast as your brain can handle. Free, open source, no signup, runs in your browser. Link in bio.',
+  hook: 'POV: you just read this whole sentence without moving your eyes. That is RSVP. Try it free. #speedreading #productivity',
+  speed: 'Most people read ~250 wpm. This is 600. Your eyes never move. RSVP Reader, free and open source. #speedreading #reading #focus',
+  focus: 'One word at a time. Nothing else on screen. If your attention wanders, this is the reading tool for you. Free and local-first. #adhd #focus #productivity',
+  opensource: 'A speed reader that is MIT licensed, local-first, and has no backend. Your library never leaves your device. Fork it, host it, own it. #opensource #buildinpublic',
+  devdigest: 'Turn a coding session or a git diff into a speed-readable, color-tagged brief, then read it in a minute. RSVP Dev Digest. #devtools #buildinpublic',
+};
+
 // ---- args ----
 function arg(name, def) { const i = process.argv.indexOf('--' + name); return i > -1 ? (process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : true) : def; }
+const presetName = arg('preset');
+if (arg('list-presets', false)) { console.log('Caption presets:'); for (const [k, v] of Object.entries(CAPTIONS)) console.log('  ' + k.padEnd(11) + v.slice(0, 70) + '...'); process.exit(0); }
 const flags = {
-  video: arg('video'), caption: arg('caption'), schedule: arg('schedule'),
-  platforms: String(arg('platforms', 'x,bluesky,mastodon')).split(',').map(s => s.trim()).filter(Boolean),
+  video: arg('video'),
+  caption: (() => { const c = arg('caption'); if (typeof c === 'string') return c; if (presetName && presetName !== true && CAPTIONS[presetName]) return CAPTIONS[presetName]; return null; })(),
+  schedule: arg('schedule'),
+  platforms: String(arg('platforms', 'x,bluesky,mastodon')).split(',').map(s => s.trim()).filter(Boolean)
+    .flatMap(p => PLATFORM_SETS[p] || [p]),
   dryRun: !!arg('dry-run', false), direct: !!arg('direct', false), list: !!arg('list', false),
 };
+// dedupe platforms while keeping order
+flags.platforms = [...new Set(flags.platforms)];
+if (presetName && presetName !== true && !CAPTIONS[presetName]) console.error('warning: unknown --preset "' + presetName + '" (run --list-presets)');
 function die(msg) { console.error('error: ' + msg); process.exit(1); }
-function need(k) { if (!process.env[k]) die('missing env ' + k + ' (set it in social/.env.local, see social/.env.example)'); return process.env[k]; }
+function need(k) { if (!process.env[k]) { if (flags.dryRun) return '<' + k + '>'; die('missing env ' + k + ' (set it in social/.env.local, see social/.env.example)'); } return process.env[k]; }
 
 // =====================================================================
 // Postiz backend (self-hosted aggregator) — see https://github.com/gitroomhq/postiz-app
