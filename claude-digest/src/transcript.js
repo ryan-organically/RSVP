@@ -120,7 +120,7 @@ export async function parseTranscriptChunks(filePath, numChunks = 2) {
  * qualifies, the old behavior (answer before the last user turn, else the
  * latest answer) is the fallback.
  */
-export async function parseLastResponse(filePath, { minChars = 400 } = {}) {
+export async function parseLastResponse(filePath, { minChars = 400, exact = false } = {}) {
   const rl = createInterface({
     input: createReadStream(filePath),
     crlfDelay: Infinity,
@@ -160,6 +160,13 @@ export async function parseLastResponse(filePath, { minChars = 400 } = {}) {
         if (history.length > 50) history.shift();
       }
     }
+  }
+
+  // exact mode (auto-digest hook): the literal final assistant response, no
+  // fall-back to earlier turns — the caller decides whether it's worth opening.
+  if (exact) {
+    meta.timestamp = pendingTs || meta.timestamp;
+    return { text: pending, meta };
   }
 
   // Preference order: the answer the user just read (before invoking the

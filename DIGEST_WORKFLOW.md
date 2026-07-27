@@ -34,7 +34,7 @@ Both commands follow the same delivery:
 1. **Generate** — Claude Code produces JSON digest with tagged blocks inline (no external API call)
 2. **Format** — CLI injects digest into a copy of `public/index.html`
 3. **Persist** — Injected script saves to browser `localStorage` (accumulates across sessions)
-4. **Open browser** — Launches the HTML file (macOS/Windows/WSL/Linux)
+4. **Open browser** — Launches the HTML file in the default browser (macOS/Windows/WSL/Linux). An experimental `--mini` flag exists for a 500x500 bottom-right app window, but it is **broken/unproven** — in testing the windows opened on unreachable Windows virtual desktops — so the full browser tab remains the default
 5. **Sync** *(automatic when a token is set)* — Both `/digest` and `/diff` POST the digest to `/api/digests` on focal.wiki whenever `$SYNC_TOKEN` is exported, so it lands in your dev digests on every device. With no token the step is silently skipped and the digest stays local
 
 ---
@@ -99,6 +99,23 @@ The token *is* the key to your private digest space — anyone with it can read/
 The Dev Digest tab on the phone is the primary mobile path: open focal.wiki → Dev Digest →
 connect once with the sync token (saved in the browser after that). Because sync is
 default-on, every digest generated during the day is waiting there.
+
+**One-tap device onboarding:** opening `https://focal.wiki/#connect=<token>` on any device
+stores the token, scrubs it from the address bar (it travels in the URL fragment, so it is
+never sent to the server), lands on the Dev Digest tab, and pulls. Easiest way to get the
+link onto a phone: Taildrop a small HTML page containing it (`tailscale file cp`). This
+replaces typing the 64-char token on a phone keyboard — the step that historically never
+happened, which is why PC digests "never landed" on the phone even though the cloud had them.
+
+### Auto-digest hook (responses > 500 words)
+
+A global Claude Code Stop hook (`~/.claude/hooks/auto-digest.mjs`, registered in
+`~/.claude/settings.json`) checks every finished response; anything over 500 words is
+automatically mirrored into the RSVP mini window via `claude-digest --last --exact
+--transcript <path> --open`. `--exact` takes the literal final response (no fall-back to an
+earlier long answer), and a content-hash state file dedupes re-fires from resume/compact.
+Sync to focal.wiki rides along whenever `$SYNC_TOKEN` is set, so long answers land on the
+phone with zero keystrokes.
 
 **Optional extra — `--phone` (Taildrop):** pass `--phone` to also push the rendered digest
 HTML to a tailnet device via `tailscale file cp` (device from `$DIGEST_TAILDROP` or

@@ -3423,6 +3423,23 @@ lpDemo._init();
     const b = new URLSearchParams(location.search).get('b');
     if (b && S.library.some(x => x.id === b)) openBook(b);
   } catch {}
+
+  // Deep-link: #connect=<token> — one-tap device onboarding for cloud sync.
+  // The token rides the URL fragment (never sent to the server); we store it,
+  // scrub it from the address bar/history, and land on the Dev Digest tab.
+  try {
+    const m = location.hash.match(/^#(?:connect|sync)=([^&]+)/);
+    if (m) {
+      const t = decodeURIComponent(m[1]).trim();
+      history.replaceState(null, '', location.pathname + location.search);
+      if (t) {
+        LS.set(K.syncToken, t);
+        switchTab('digest');
+        pullRemoteBooks(false);
+        showToast('Cloud sync connected — pulling digests', 'ok');
+      }
+    }
+  } catch {}
 })();
 </script>
 </body>
