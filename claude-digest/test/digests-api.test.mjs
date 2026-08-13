@@ -19,17 +19,17 @@ globalThis.fetch = async (url, opts) => {
     { type: 'ok' }] }) });
   if (/^CREATE/i.test(sql)) return ok();
   if (/^INSERT/i.test(sql)) {
-    const [id, owner, title, project, time, blocks, created] = a;
+    const [id, owner, title, project, time, blocks, created, meta] = a;
     const i = store.findIndex(r => r.id === id && r.owner === owner);
-    const row = { id, owner, title, project, time, blocks, created: Number(created) };
+    const row = { id, owner, title, project, time, blocks, created: Number(created), meta };
     if (i >= 0) store[i] = row; else store.push(row);
     return ok();
   }
   if (/^SELECT/i.test(sql)) {
     const owner = a[0];
     const rows = store.filter(r => r.owner === owner).sort((x, y) => y.created - x.created).slice(0, 100)
-      .map(r => [r.id, r.title, r.project, r.time, r.blocks].map(v => ({ type: 'text', value: v })));
-    return ok(['id', 'title', 'project', 'time', 'blocks'], rows);
+      .map(r => [r.id, r.title, r.project, r.time, r.blocks, r.meta].map(v => (v == null ? { type: 'null' } : { type: 'text', value: v })));
+    return ok(['id', 'title', 'project', 'time', 'blocks', 'meta'], rows);
   }
   if (/^DELETE/i.test(sql)) { const [owner, id] = a; const i = store.findIndex(r => r.owner === owner && r.id === id); if (i >= 0) store.splice(i, 1); return ok(); }
   return ok();
@@ -62,6 +62,16 @@ ck('POST stores → ok', r.statusCode === 200 && r._b.ok === true, r._b);
 ck('POST bad (no blocks) → 400', (await call('POST', { auth: 'secret123', body: { id: 'x' } })).statusCode === 400);
 r = await call('GET', { auth: 'secret123' });
 ck('GET returns digest, blocks parsed', r._b.length === 1 && r._b[0].id === 'demo-1' && r._b[0].blocks.length === 2 && r._b[0].blocks[0].text === 'one', r._b);
+ck('no meta posted → no meta key returned', !('meta' in r._b[0]), r._b[0]);
+const dgMeta = { id: 'demo-2', title: 'Tagged', project: 'RSVP', time: '2026-07-28T00:00:00Z',
+  blocks: [{ tag: 'done', text: 'shipped it' }],
+  meta: { bucket: { id: 'b-1', name: 'Focal' }, tickets: [{ id: 't-1', title: 'Fix sync', stage: 'todo' }] } };
+r = await call('POST', { auth: 'secret123', body: dgMeta });
+ck('POST with meta → ok', r.statusCode === 200 && r._b.ok === true, r._b);
+r = await call('GET', { auth: 'secret123' });
+const withMeta = r._b.find(d => d.id === 'demo-2');
+ck('meta round-trips (bucket + tickets)', withMeta && withMeta.meta && withMeta.meta.bucket.name === 'Focal' && withMeta.meta.tickets[0].title === 'Fix sync', withMeta && withMeta.meta);
+await call('DELETE', { auth: 'secret123', query: { id: 'demo-2' } });
 ck('CORS header present', !!r._h['Access-Control-Allow-Origin']);
 ck('OPTIONS preflight → 204', (await call('OPTIONS', {})).statusCode === 204);
 ck('non-matching token → 401 (single shared secret)', (await call('GET', { auth: 'someoneelse' })).statusCode === 401);

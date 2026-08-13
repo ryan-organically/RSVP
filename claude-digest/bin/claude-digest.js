@@ -7,7 +7,7 @@ import { join, basename, dirname, resolve } from 'node:path';
 import { tmpdir, platform, homedir } from 'node:os';
 import { execSync, execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { findCurrentTranscript, parseTranscriptChunks, parseLastResponse } from '../src/transcript.js';
+import { findCurrentTranscript, parseTranscriptChunks, parseLastResponse, collectUuids } from '../src/transcript.js';
 import { formatRSVP, buildSession } from '../src/formats/rsvp.js';
 import { formatJSON } from '../src/formats/json.js';
 import { formatMarkdown } from '../src/formats/markdown.js';
@@ -29,6 +29,7 @@ const { values, positionals } = parseArgs({
     sync:    { type: 'boolean', default: false },
     'no-sync': { type: 'boolean', default: false },
     phone:   { type: 'boolean', default: false },
+    ticket:  { type: 'string', multiple: true },
     format:  { type: 'string', short: 'f', default: 'json' },
     output:  { type: 'string', short: 'o' },
     help:    { type: 'boolean', short: 'h', default: false },
@@ -59,10 +60,31 @@ Options:
                         Windows landed on unreachable virtual desktops in testing; kept
                         opt-in only until that's solved. --full is a no-op (old default).
   --phone               Also Taildrop the digest HTML to your tailnet phone (opt-in)
+  --ticket <id>         Tag the digest with a Malleable kanban ticket (repeatable).
+                        Without the flag, tickets whose UUIDs appear in the session
+                        transcript are associated automatically; the repo's linked
+                        Malleable bucket is always tagged when one exists.
   -f, --format <type>   json | markdown | html | rsvp (default: json)
   -o, --output <path>   Write to file instead of stdout
   -h, --help            Show this help`);
   process.exit(0);
+}
+
+// Classify a line of the response into the reader's tag vocabulary (see TAG_COLORS
+// in public/index.html: done / high / critical / decision / info). Rules run on the
+// RAW markdown line, in order — first match wins. Past-tense accomplishment beats
+// the brokenness it describes ("Fixed the broken sync" → done), alarm words beat
+// open-work words, and anything unmatched stays plain info.
+const TAG_RULES = [
+  ['decision', /\b(decision|decided|verdict|chose|opted (for|to)|recommend(ed|ation)?|your call|trade-?offs?)\b/i],
+  ['done',     /\b(shipped|fixed|fixes|deployed|merged|implemented|resolved|completed|verified|confirmed|landed|green|passing)\b/i],
+  ['done',     /^\s*(?:[-*•]\s+|\d+[.)]\s+|#{1,6}\s+|\*\*)?(added|built|created|wrote|wired|removed|updated|renamed|refactored)\b/i],
+  ['critical', /\b(broken|breaks|crash(es|ed)?|regression|security|vulnerab\w*|data loss|corrupt\w*|fail(s|ed|ing)?|error(s|ed)?|do not|banned)\b/i],
+  ['high',     /\b(todo|next steps?|next up|remaining|awaiting|blocked|pending|caveats?|gotchas?|warning|not yet|open question|follow-?ups?|needs|still|unproven|human-gated|your (approval|review))\b/i],
+];
+function classifyLine(rawLine) {
+  for (const [tag, re] of TAG_RULES) { if (re.test(rawLine)) return tag; }
+  return 'info';
 }
 
 // Turn the verbatim last response into RSVP blocks: one block per paragraph / list
@@ -83,9 +105,73 @@ function responseToBlocks(text) {
   for (const line of text.split('\n')) {
     if (/^\s*```/.test(line)) continue;          // skip code-fence markers
     const c = clean(line);
-    if (c) blocks.push({ tag: 'info', text: c });
+    if (c) blocks.push({ tag: classifyLine(line), text: c });
   }
   return blocks;
+}
+
+// ── Malleable tagging: which bucket (and which kanban tickets) a digest belongs to ──
+// Bucket comes from the repo↔bucket link (`mal buckets current --json`), cached per
+// repo root so routine digests don't pay a network call. Tickets are found by
+// intersecting UUIDs that appear anywhere in the session transcript with the actual
+// task list — exact, no guessing. Everything here is best-effort: no `mal`, no link,
+// or a timeout simply leaves the digest untagged.
+const CFG_DIR = join(homedir(), '.config', 'claude-digest');
+const CACHE_FILE = join(CFG_DIR, 'cache.json');
+const BUCKET_TTL_HIT_MS = 7 * 24 * 3600 * 1000;   // linked buckets barely ever move
+const BUCKET_TTL_MISS_MS = 3600 * 1000;           // re-check unlinked repos hourly
+
+function readCacheFile() { try { return JSON.parse(readFileSync(CACHE_FILE, 'utf-8')); } catch { return {}; } }
+function writeCacheFile(c) { try { mkdirSync(CFG_DIR, { recursive: true }); writeFileSync(CACHE_FILE, JSON.stringify(c, null, 2)); } catch {} }
+
+function repoRootFor(dir) {
+  try { return execSync(`git -C "${dir}" rev-parse --show-toplevel`, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  catch { return null; }
+}
+
+function malJson(args, opts = {}) {
+  const out = execFileSync('mal', args, { encoding: 'utf-8', timeout: 20000, stdio: ['ignore', 'pipe', 'ignore'], ...opts });
+  const i = out.indexOf('{');
+  if (i < 0) throw new Error('no json');
+  return JSON.parse(out.slice(i));
+}
+
+function resolveBucket(dir) {
+  const root = repoRootFor(dir) || resolve(dir);
+  const cache = readCacheFile();
+  const hit = cache.buckets && cache.buckets[root];
+  if (hit && Date.now() - hit.ts < (hit.id ? BUCKET_TTL_HIT_MS : BUCKET_TTL_MISS_MS)) {
+    return hit.id ? { id: hit.id, name: hit.name || '' } : null;
+  }
+  let bucket = null;
+  try {
+    const j = malJson(['buckets', 'current', '--json'], { cwd: root });
+    if (j.ok && j.data && j.data.id) bucket = { id: j.data.id, name: j.data.name || '' };
+  } catch { /* mal missing or repo unlinked — digest stays untagged */ }
+  cache.buckets = cache.buckets || {};
+  cache.buckets[root] = { ...(bucket || {}), ts: Date.now() };
+  writeCacheFile(cache);
+  return bucket;
+}
+
+function resolveTickets(transcriptUuids) {
+  const explicit = (values.ticket || []).map(s => s.trim().toLowerCase()).filter(Boolean);
+  const wanted = explicit.length ? new Set(explicit) : transcriptUuids;
+  if (!wanted || !wanted.size) return [];
+  try {
+    const j = malJson(['tasks', 'ls', '--json']);
+    return (j.data || [])
+      .filter(t => t && wanted.has(String(t.id).toLowerCase()))
+      .slice(0, 5)
+      .map(t => ({ id: t.id, title: t.title || '', stage: t.kanban_stage || '' }));
+  } catch { return []; }
+}
+
+function digestMeta(bucket, tickets) {
+  const meta = {};
+  if (bucket) meta.bucket = bucket;
+  if (tickets && tickets.length) meta.tickets = tickets;
+  return Object.keys(meta).length ? meta : undefined;
 }
 
 async function main() {
@@ -105,11 +191,12 @@ async function main() {
     if (!text) { console.error('No assistant response found to mirror.'); process.exit(1); }
     const blocks = responseToBlocks(text);
     if (!blocks.length) { console.error('Response had no readable text.'); process.exit(1); }
-    let project = 'session';
-    try { project = basename(execSync('git rev-parse --show-toplevel', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); }
-    catch { project = basename(process.cwd()); }
+    const repoRoot = repoRootFor(process.cwd()) || process.cwd();
+    const project = basename(repoRoot);
     const title = blocks[0].text.split(' ').slice(0, 7).join(' ').slice(0, 60) || 'Latest response';
-    const digest = { title, project, blocks };
+    const bucket = resolveBucket(repoRoot);
+    const tickets = resolveTickets(await collectUuids(transcriptPath));
+    const digest = { title, project, blocks, meta: digestMeta(bucket, tickets) };
     const session = buildSession(digest, { timestamp: meta.timestamp || new Date().toISOString() });
     const output = await formatRSVP(digest, {}, session);
     if (!values['no-sync']) await syncDigest(session);
@@ -140,10 +227,11 @@ async function main() {
     catch (e) { console.error(`Cannot read ${filePath}: ${e.message}`); process.exit(1); }
     const blocks = responseToBlocks(raw);
     if (!blocks.length) { console.error('File had no readable text.'); process.exit(1); }
-    let project = 'file';
-    try { project = basename(execSync(`git -C "${dirname(filePath)}" rev-parse --show-toplevel`, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); }
-    catch { project = basename(dirname(resolve(filePath))) || 'file'; }
-    const digest = { title: basename(filePath), project, blocks };
+    const fileRoot = repoRootFor(dirname(filePath));
+    const project = fileRoot ? basename(fileRoot) : (basename(dirname(resolve(filePath))) || 'file');
+    const bucket = resolveBucket(fileRoot || dirname(resolve(filePath)));
+    const tickets = resolveTickets(null); // no transcript in file mode; --ticket still works
+    const digest = { title: basename(filePath), project, blocks, meta: digestMeta(bucket, tickets) };
     const session = buildSession(digest, { timestamp: new Date().toISOString() });
     const output = await formatRSVP(digest, {}, session);
     if (!values['no-sync']) await syncDigest(session);
@@ -176,6 +264,7 @@ async function main() {
   if (values.inject) {
     const input = await readStdin();
     const digest = JSON.parse(input);
+    if (!digest.meta) digest.meta = digestMeta(resolveBucket(process.cwd()), resolveTickets(null));
     const meta = { timestamp: new Date().toISOString() };
     const fmt = values.open ? 'rsvp' : values.format;
 
@@ -241,20 +330,40 @@ async function taildropDigest(output, title) {
 
 // Push a digest to your focal.wiki instance so it shows up on every device.
 // Token from $SYNC_TOKEN (or $FOCAL_SYNC_TOKEN); endpoint from $FOCAL_SYNC_URL.
+//
+// Trust-but-verify (2026-08-08): a POST here once returned 2xx while the row
+// never became visible — the CLI printed "Synced" and the digest silently
+// missed the phone. A sync is only claimed after reading the digest BACK from
+// the server by id. The printed account fingerprint is the first 8 hex chars
+// of sha256(token) — matching the server's owner-namespace derivation, safe to
+// print, and lets any two devices confirm they're on the same account without
+// ever comparing the token itself.
+function accountFingerprint(token) {
+  return createHash('sha256').update(token).digest('hex').slice(0, 8);
+}
+
 async function syncDigest(session) {
   const url = process.env.FOCAL_SYNC_URL || 'https://focal.wiki/api/digests';
   const token = (process.env.SYNC_TOKEN || process.env.FOCAL_SYNC_TOKEN || '').trim();
   if (!token) { if (values.sync) console.error('Sync skipped: set $SYNC_TOKEN to push to focal.wiki.'); return; }
+  const fp = accountFingerprint(token);
   try {
     const r = await fetch(url, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify(session),
     });
-    if (r.ok) console.error(`Synced to ${url}`);
-    else console.error(`Sync failed: HTTP ${r.status} ${(await r.text()).slice(0, 120)}`);
+    if (!r.ok) {
+      console.error(`SYNC FAILED (push): HTTP ${r.status} ${(await r.text()).slice(0, 120)} [account ${fp}]`);
+      return;
+    }
+    // Read-back: the digest must be listed under this token before we claim success.
+    const check = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    const listed = check.ok && (await check.json()).some((d) => d.id === session.id);
+    if (listed) console.error(`Synced to ${url} — VERIFIED by read-back [account ${fp}]`);
+    else console.error(`SYNC FAILED (phantom): server accepted the push but "${session.id}" is not in the read-back list [account ${fp}]. The digest is NOT on other devices.`);
   } catch (e) {
-    console.error('Sync failed: ' + (e.message || e));
+    console.error(`SYNC FAILED: ${e.message || e} [account ${fp}]`);
   }
 }
 

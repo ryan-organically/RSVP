@@ -194,6 +194,41 @@ export async function parseLastResponse(filePath, { minChars = 400, exact = fals
   return { text, meta };
 }
 
+/**
+ * Collect UUIDs the session actually WORKED WITH: typed user text, assistant
+ * prose, and tool-call inputs (e.g. `mal tasks move <id>`). Tool RESULTS are
+ * deliberately excluded — a routine `mal tasks ls` dumps every ticket's UUID
+ * into its output, which would associate the digest with the whole board.
+ * The caller intersects this set with the real task list, so remaining noise
+ * (message ids, other UUIDs) filters itself out.
+ */
+export async function collectUuids(filePath) {
+  const found = new Set();
+  if (!filePath) return found;
+  const re = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+  const scan = (s) => { for (const m of String(s).match(re) || []) found.add(m.toLowerCase()); };
+  try {
+    const rl = createInterface({ input: createReadStream(filePath), crlfDelay: Infinity });
+    for await (const line of rl) {
+      let entry;
+      try { entry = JSON.parse(line); } catch { continue; }
+      const msg = entry.message;
+      if (!msg) continue;
+      if (entry.type === 'user' && msg.role === 'user') {
+        const text = extractText(msg.content); // typed text only, not tool_result carriers
+        if (text) scan(text);
+      }
+      if (entry.type === 'assistant' && msg.role === 'assistant' && Array.isArray(msg.content)) {
+        for (const block of msg.content) {
+          if (block.type === 'text' && block.text) scan(block.text);
+          if (block.type === 'tool_use' && block.input) scan(JSON.stringify(block.input));
+        }
+      }
+    }
+  } catch { /* unreadable transcript — no ticket association */ }
+  return found;
+}
+
 function extractText(content) {
   if (typeof content === 'string') return content.trim();
   if (Array.isArray(content)) return content.filter(b => b.type === 'text').map(b => b.text).join(' ').trim();

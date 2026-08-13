@@ -30,6 +30,7 @@ export function buildSession(digest, meta = {}) {
     project: digest.project || '',
     time: meta.timestamp || new Date().toISOString(),
     blocks: digest.blocks,
+    ...(digest.meta ? { meta: digest.meta } : {}),
   };
 }
 

@@ -1,6 +1,7 @@
 node_modules/
 .vercel/
 *.pdf
+books/
 .env
 .env.local
 .env*.local

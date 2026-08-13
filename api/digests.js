@@ -4,8 +4,9 @@
 // of the token, so a different token is a different private space. No accounts.
 //
 // Routes (same file, by method):
-//   GET    /api/digests        -> [{id,title,project,time,blocks[]}, ...] newest first (<=100)
-//   POST   /api/digests        -> body {id,title,project,time,blocks[]} ; upsert
+//   GET    /api/digests        -> [{id,title,project,time,blocks[],meta?}, ...] newest first (<=100)
+//   POST   /api/digests        -> body {id,title,project,time,blocks[],meta?} ; upsert
+//                                 meta is an opaque object (Malleable bucket + kanban tickets)
 //   DELETE /api/digests?id=ID  -> remove one
 //
 // Storage is Turso over its HTTP pipeline API — zero npm deps, same spirit as proxy.js.
@@ -19,8 +20,10 @@ let _ready = null; // ensure-schema promise, once per cold start
 function ensureSchema() {
   return turso(`CREATE TABLE IF NOT EXISTS digests(
       id TEXT PRIMARY KEY, owner TEXT NOT NULL, title TEXT, project TEXT,
-      time TEXT, blocks TEXT, created INTEGER)`)
-    .then(() => turso(`CREATE INDEX IF NOT EXISTS idx_digests_owner ON digests(owner, created DESC)`));
+      time TEXT, blocks TEXT, created INTEGER, meta TEXT)`)
+    .then(() => turso(`CREATE INDEX IF NOT EXISTS idx_digests_owner ON digests(owner, created DESC)`))
+    // Pre-meta deploys created the table without the column; ALTER is a no-op error then.
+    .then(() => turso(`ALTER TABLE digests ADD COLUMN meta TEXT`).catch(() => {}));
 }
 
 function eqToken(a, b) {
@@ -55,21 +58,27 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'GET') {
       const rows = await turso(
-        `SELECT id,title,project,time,blocks FROM digests WHERE owner=? ORDER BY created DESC LIMIT 100`,
+        `SELECT id,title,project,time,blocks,meta FROM digests WHERE owner=? ORDER BY created DESC LIMIT 100`,
         [owner]);
-      return res.status(200).json(rows.map(r => ({
-        id: r.id, title: r.title, project: r.project, time: r.time,
-        blocks: safeBlocks(r.blocks),
-      })));
+      return res.status(200).json(rows.map(r => {
+        const out = {
+          id: r.id, title: r.title, project: r.project, time: r.time,
+          blocks: safeBlocks(r.blocks),
+        };
+        const meta = safeMeta(r.meta);
+        if (meta) out.meta = meta;
+        return out;
+      }));
     }
 
     if (req.method === 'POST') {
       const d = await readJson(req);
       if (!d || !d.id || !Array.isArray(d.blocks)) return res.status(400).json({ error: 'invalid digest' });
+      const meta = d.meta && typeof d.meta === 'object' ? JSON.stringify(d.meta).slice(0, 10000) : null;
       await turso(
-        `INSERT OR REPLACE INTO digests(id,owner,title,project,time,blocks,created) VALUES(?,?,?,?,?,?,?)`,
+        `INSERT OR REPLACE INTO digests(id,owner,title,project,time,blocks,created,meta) VALUES(?,?,?,?,?,?,?,?)`,
         [str(d.id), owner, str(d.title), str(d.project), str(d.time || new Date().toISOString()),
-         JSON.stringify(d.blocks).slice(0, 500000), Date.now()]);
+         JSON.stringify(d.blocks).slice(0, 500000), Date.now(), meta]);
       return res.status(200).json({ ok: true, id: d.id });
     }
 
@@ -88,4 +97,8 @@ module.exports = async function handler(req, res) {
 
 function safeBlocks(s) {
   try { const b = JSON.parse(s); return Array.isArray(b) ? b : []; } catch { return []; }
+}
+function safeMeta(s) {
+  if (!s) return null;
+  try { const m = JSON.parse(s); return m && typeof m === 'object' && !Array.isArray(m) ? m : null; } catch { return null; }
 }
