@@ -356,6 +356,7 @@ details.paste-block[open]>summary::before{content:"–"}
 .digest-preview{font-size:var(--t-xs);color:var(--text-dim);line-height:var(--lh-body);margin-bottom:var(--s-3);
   display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .digest-tally{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:var(--s-3)}
+.pill-ticket{max-width:280px;overflow:hidden;text-overflow:ellipsis;display:inline-block;line-height:20px}
 .digest-actions{display:flex;gap:var(--s-2);border-top:var(--bw) solid var(--border);padding-top:var(--s-3)}
 
 /* ============================================================ READER ============================================================ */
@@ -3098,14 +3099,27 @@ function renderDigestList() {
   if (!DIGEST_SESSIONS.length) { wrap.innerHTML = '<div class="empty"><div class="em-ico">⌗</div><h3>No digests yet</h3><p>Run /digest or /diff in Claude Code, or paste dev notes above to turn them into a speed-readable brief.</p></div>'; return; }
   wrap.innerHTML = DIGEST_SESSIONS.map(s => {
     const counts = {}; s.blocks.forEach(b => counts[b.tag] = (counts[b.tag] || 0) + 1);
-    const tally = Object.entries(counts).map(([t, n]) => { const c = TAG_COLORS[t] || TAG_COLORS.info; return '<span class="pill ' + c.cls + '">' + c.label + ' ×' + n + '</span>'; }).join('');
+    // The tally earns its place by flagging the notable tags only — a wall of
+    // "INFO ×18" says nothing, so plain info blocks fold into the word count.
+    const words = s.blocks.reduce((n, b) => n + (b.text ? b.text.split(/\s+/).length : 0), 0);
+    const tally = ['<span class="pill">' + words.toLocaleString() + ' words</span>'].concat(
+      Object.entries(counts).filter(([t]) => t !== 'info' && TAG_COLORS[t])
+        .map(([t, n]) => { const c = TAG_COLORS[t]; return '<span class="pill ' + c.cls + '">' + c.label + ' ×' + n + '</span>'; })).join('');
+    // Provenance chips: repo, Malleable bucket, associated kanban tickets.
+    const m = s.meta || {};
+    const chips = [];
+    if (s.project) chips.push('<span class="pill">' + esc(s.project) + '</span>');
+    if (m.bucket && m.bucket.name) chips.push('<span class="pill pill-accent">▦ ' + esc(m.bucket.name) + '</span>');
+    (Array.isArray(m.tickets) ? m.tickets : []).forEach(t => {
+      if (t && t.title) chips.push('<span class="pill pill-ticket" title="' + esc(t.title) + (t.stage ? ' · ' + esc(t.stage) : '') + '">◈ ' + esc(t.title) + '</span>');
+    });
     const time = new Date(s.time).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
     return '<div class="digest-card-wrap"><div class="digest-card">' +
       '<div class="digest-head"><span class="digest-title">' + esc(s.title) + '</span>' +
       '<span style="display:flex;gap:8px;align-items:center"><span class="digest-time">' + esc(time) + '</span>' +
       '<button class="bm-del" data-del="' + esc(s.id) + '" aria-label="Delete digest" style="font-size:13px">✕</button></span></div>' +
       '<div class="digest-preview">' + esc(s.blocks[0] ? s.blocks[0].text : '') + '</div>' +
-      '<div class="digest-tally">' + tally + '</div>' +
+      '<div class="digest-tally">' + chips.join('') + tally + '</div>' +
       '<div class="digest-actions"><button class="btn btn-primary btn-sm" data-read="' + esc(s.id) + '">Read digest</button>' +
       '<button class="btn btn-outline btn-sm" data-export="' + esc(s.id) + '">⤓ Export</button></div></div></div>';
   }).join('');
@@ -3389,6 +3403,96 @@ const lpDemo = (function () {
 })();
 lpDemo._init();
 
+/* ---- Fragment handoff -----------------------------------------------------
+   How every external surface (embed.js, the browser extension, the MCP server,
+   the /arxiv + /w reader routes) hands text to the reader:
+
+     #u=<encoded https url>[&ti=<title>]   fetch it through /api/read
+     #t=<base64url deflate-raw utf-8>[&ti=]  the text itself, compressed
+     #p=<base64url utf-8>[&ti=]            the text itself, uncompressed fallback
+
+   These ride the URL FRAGMENT on purpose. Browsers never transmit a fragment to
+   the server, so text handed over this way stays on-device exactly like a local
+   file import — no upload, no server-side copy, nothing to namespace or leak.
+   Same reasoning as the #connect= token handoff above.
+--------------------------------------------------------------------------- */
+function b64urlToBytes(s) {
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4);
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream !== 'function') throw new Error('compression unsupported');
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Response(stream).text();
+}
+// Long texts arrive by postMessage instead of the fragment (a multi-megabyte URL is
+// a bad idea). We only ever accept from window.opener, and the payload is treated as
+// untrusted text — it is rendered with textContent and stored locally, never executed
+// and never sent anywhere.
+function receivePostedText(timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    const finish = (fn, v) => { window.removeEventListener('message', onMsg); clearTimeout(timer); fn(v); };
+    const timer = setTimeout(() => finish(reject, new Error('the sending page never delivered the text')), timeoutMs);
+    function onMsg(ev) {
+      if (ev.source !== window.opener) return;
+      const d = ev.data;
+      if (!d || d.focal !== 'text' || typeof d.text !== 'string') return;
+      finish(resolve, { text: d.text, title: typeof d.title === 'string' ? d.title.slice(0, 200) : '' });
+    }
+    window.addEventListener('message', onMsg);
+    try { if (window.opener) window.opener.postMessage({ focal: 'ready' }, '*'); } catch {}
+  });
+}
+
+async function openFromFragment() {
+  const hash = location.hash.slice(1);
+  if (!hash) return false;
+  const q = new URLSearchParams(hash);
+  const u = q.get('u'), t = q.get('t'), p = q.get('p'), posted = q.get('post') === '1';
+  if (!u && !t && !p && !posted) return false;
+  const wpm = parseInt(q.get('wpm'), 10);
+  if (wpm >= 50 && wpm <= 1200) setWpm(wpm);
+
+  // Scrub immediately: the text (or URL) should not sit in the address bar or history.
+  history.replaceState(null, '', location.pathname + location.search);
+
+  let title = (q.get('ti') || '').slice(0, 200);
+  let text = '';
+  showLoading('Opening…');
+  try {
+    if (u) {
+      const target = new URL(u, location.href);
+      if (target.protocol !== 'https:') throw new Error('only https sources can be opened');
+      const r = await fetch('/api/read?url=' + encodeURIComponent(target.href));
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || ('could not read that page (' + r.status + ')'));
+      text = data.text || '';
+      if (!title) title = data.title || target.hostname;
+    } else if (t) {
+      text = await inflateRaw(b64urlToBytes(t));
+    } else if (p) {
+      text = new TextDecoder().decode(b64urlToBytes(p));
+    } else {
+      const got = await receivePostedText();
+      text = got.text;
+      if (!title) title = got.title;
+    }
+    if (!text || text.trim().length < 10) throw new Error('no readable text');
+    if (!title) title = text.trim().split('\n')[0].slice(0, 60) || 'Shared text';
+    const meta = await importBook(title, text, { source: u ? 'link' : 'embed' });
+    renderLibrary();
+    await openBook(meta.id);
+    return true;
+  } catch (e) {
+    hideLoading();
+    showToast('Could not open that text: ' + e.message, 'err', 4500);
+    return false;
+  }
+}
+
 (async function init() {
   loadSettings();
   if (!S.cyanMigrated) { if (S.accent === '#e84040') S.accent = '#22d3ee'; S.cyanMigrated = true; saveSettings(); }
@@ -3440,6 +3544,9 @@ lpDemo._init();
       }
     }
   } catch {}
+
+  // Deep-link: text or URL handed over by an external surface (see openFromFragment).
+  try { await openFromFragment(); } catch {}
 })();
 </script>
 </body>

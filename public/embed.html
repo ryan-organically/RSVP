@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Read in Focal, the embed</title>
+<meta name="description" content="One script tag adds a Read in Focal button to any page. Nothing is uploaded, no cookies, no account.">
+<meta property="og:title" content="Read in Focal, the embed">
+<meta property="og:description" content="One script tag adds a Read in Focal button to any page. Nothing is uploaded.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>">
+<style>
+:root {
+  --bg:#111317; --surface:#181a1f; --surface-2:#1e2127;
+  --border:#2a2e36; --border-strong:#383d47;
+  --text:#ecedef; --text-dim:#a4a8b1; --text-faint:#7b8090;
+  --accent:#22d3ee; --accent-contrast:#04181d;
+  --good:#46c07a;
+  --font-ui:"Inter","Inter Variable",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --font-serif:"Source Serif 4","Iowan Old Style",Georgia,"Times New Roman",serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --r-md:8px; --r-lg:12px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-ui);
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:64px 24px 96px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h1{font-size:2.25rem;line-height:1.15;letter-spacing:-0.02em;margin:0 0 12px;font-weight:600}
+h2{font-size:1.25rem;letter-spacing:-0.01em;margin:56px 0 12px;font-weight:600}
+h3{font-size:1rem;margin:28px 0 8px;font-weight:600}
+p{margin:0 0 16px;color:var(--text-dim)}
+.lede{font-size:1.0625rem;color:var(--text);max-width:60ch}
+.eyebrow{font-family:var(--font-mono);font-size:.6875rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--text-faint);margin:0 0 20px}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);
+  padding:16px;overflow-x:auto;margin:0 0 8px}
+code{font-family:var(--font-mono);font-size:.8125rem;color:var(--text)}
+p code,li code,td code{background:var(--surface-2);border:1px solid var(--border);
+  border-radius:4px;padding:.1em .35em;font-size:.8125rem}
+.snippet{position:relative}
+.copy{position:absolute;top:10px;right:10px;font:inherit;font-size:.75rem;
+  padding:5px 10px;border-radius:999px;border:1px solid var(--border-strong);
+  background:var(--surface-2);color:var(--text-dim);cursor:pointer}
+.copy:hover{color:var(--text);border-color:var(--accent)}
+.copy.done{color:var(--good);border-color:var(--good)}
+table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:.875rem;display:block;overflow-x:auto}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--text-faint);font-weight:500;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}
+td{color:var(--text-dim)}
+.demo{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:28px;margin:0 0 8px}
+.demo h3{margin-top:0;font-family:var(--font-serif);font-size:1.375rem;font-weight:600;color:var(--text)}
+.demo p{font-family:var(--font-serif);font-size:1.0625rem;line-height:1.65}
+.demo p:last-child{margin-bottom:0}
+.note{font-size:.8125rem;color:var(--text-faint);margin-top:8px}
+ul{color:var(--text-dim);padding-left:20px;margin:0 0 16px}
+li{margin-bottom:6px}
+.rule{height:1px;background:var(--border);border:0;margin:56px 0 0}
+footer{margin-top:56px;font-size:.8125rem;color:var(--text-faint)}
+.pill{display:inline-block;font-family:var(--font-mono);font-size:.6875rem;
+  border:1px solid var(--border-strong);border-radius:999px;padding:3px 10px;
+  color:var(--text-dim);margin:0 6px 6px 0}
+@media (max-width:600px){.wrap{padding:40px 18px 72px}h1{font-size:1.75rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Focal · embed</p>
+  <h1>Put a reader on your page</h1>
+  <p class="lede">One script tag adds a "Read in Focal" button to any article, chapter
+    sample, or documentation page. Your readers get a fast, focused way through your
+    text. You get the dwell time.</p>
+
+  <h2>The whole install</h2>
+  <div class="snippet">
+    <pre><code id="snip">&lt;script src="https://focal.wiki/embed.js" data-focal-selector="article"&gt;&lt;/script&gt;</code></pre>
+    <button class="copy" onclick="copySnip(this)">Copy</button>
+  </div>
+  <p class="note">Drop it before <code>&lt;/body&gt;</code>. The button appears at the top of
+    the matched element. That is the entire integration.</p>
+
+  <h2>Try it</h2>
+  <p>The button below is live, running on this page, on the sample text in this box.</p>
+
+  <div class="demo" id="sample">
+    <h3>On reading faster than you speak</h3>
+    <p>Most people read at roughly the speed they talk, and for the same reason. The
+      voice in your head is not a metaphor. It is a real motor process, and it caps you
+      somewhere near three hundred words a minute no matter how quickly your eyes could
+      otherwise move.</p>
+    <p>Rapid serial visual presentation removes one half of that problem. Words arrive
+      one at a time, in a fixed spot, so your eyes stop jumping and stop travelling back.
+      What remains is the voice, and the honest research is split on how much of it you
+      can drop before comprehension follows.</p>
+    <p>So the useful claim is narrower than the one usually made. RSVP will not turn you
+      into a machine that absorbs a book in ten minutes. It will let you move through
+      text at a pace you choose, without your eyes doing the work of finding the next
+      word, and for a great deal of reading that is exactly the thing you wanted.</p>
+  </div>
+  <p class="note">Opens in a new tab. The text travels in the URL fragment, which browsers
+    never send to a server, so this page's words never touch ours.</p>
+
+  <h2>What it does not do</h2>
+  <ul>
+    <li>No upload. Extraction happens in the visitor's browser and the text is handed
+      straight to the reader.</li>
+    <li>No cookies, no local storage on your domain, no fingerprinting.</li>
+    <li>No network request at all until somebody clicks the button.</li>
+    <li>No account, for you or for your readers.</li>
+    <li>No analytics by default. If you want the dwell-time numbers, you opt in
+      explicitly, and the counters are aggregate only.</li>
+  </ul>
+  <p>This is not a privacy posture bolted on afterward. There is no path by which your
+    readers' data could reach us, because the button never sends any.</p>
+
+  <h2>Options</h2>
+  <table>
+    <thead><tr><th>Attribute</th><th>Default</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>data-focal-selector</code></td><td>auto</td><td>CSS selector for the text container. Auto-detection tries <code>article</code>, <code>[role=main]</code>, <code>main</code>, then common CMS classes.</td></tr>
+      <tr><td><code>data-focal-mount</code></td><td>the container</td><td>Where to inject the button, if you want it somewhere other than the text.</td></tr>
+      <tr><td><code>data-focal-position</code></td><td><code>before</code></td><td><code>before</code> or <code>after</code> the mount's contents.</td></tr>
+      <tr><td><code>data-focal-label</code></td><td>Read in Focal</td><td>Button text.</td></tr>
+      <tr><td><code>data-focal-wpm</code></td><td>reader's saved setting</td><td>Starting words per minute.</td></tr>
+      <tr><td><code>data-focal-auto</code></td><td><code>true</code></td><td>Set to <code>false</code> to place the button yourself.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Placing it yourself</h3>
+  <pre><code>&lt;script src="https://focal.wiki/embed.js" data-focal-auto="false"&gt;&lt;/script&gt;
+&lt;script&gt;
+  // Inject wherever you like
+  Focal.inject({ mount: '#my-toolbar', label: 'Read this chapter' });
+
+  // Or wire your own control
+  document.querySelector('#read').onclick = () =&gt; Focal.open();
+
+  // Or just take the extracted text
+  const { title, text } = Focal.extract(document.querySelector('article'));
+&lt;/script&gt;</code></pre>
+
+  <p>The button inherits your page's font and colour, and draws a one pixel border in
+    the current text colour, so it sits inside your design instead of fighting it.
+    Override <code>.focal-btn</code> in your own CSS if you want something else.</p>
+
+  <h2>Long texts</h2>
+  <p>Fragments handle most articles comfortably. A full chapter or a whole book is passed
+    directly from your page to the reader tab instead, window to window, still without a
+    server in the middle. You do not need to configure anything, the script picks the
+    right path by size.</p>
+
+  <h2>The read API</h2>
+  <p>If you would rather send a link than extract text, the reader can fetch public
+    documents itself:</p>
+  <pre><code>GET https://focal.wiki/api/read?url=https://en.wikipedia.org/wiki/Reading
+GET https://focal.wiki/api/read?url=https://arxiv.org/abs/1706.03762&amp;format=text</code></pre>
+  <p>Returns <code>{ source, url, title, byline, words, chars, text }</code>. It stores
+    nothing and requires no key. Sources currently served:</p>
+  <p>
+    <span class="pill">wikipedia (all languages)</span>
+    <span class="pill">arxiv</span>
+    <span class="pill">biorxiv</span>
+    <span class="pill">medrxiv</span>
+    <span class="pill">pubmed central</span>
+    <span class="pill">gutenberg</span>
+    <span class="pill">standard ebooks</span>
+  </p>
+  <p class="note">The allowlist is deliberate rather than lazy. An endpoint that fetches
+    any URL you name is a server-side request forgery tool, so Focal serves named sources
+    only. Want yours added? Ask.</p>
+
+  <hr class="rule">
+  <footer>
+    <p><a href="/">Focal</a> · <a href="https://github.com/ryan-organically/RSVP">Source on GitHub</a>
+      · MIT licensed · Free to embed, including commercially.</p>
+  </footer>
+</div>
+
+<script>
+function copySnip(btn) {
+  var text = document.getElementById('snip').textContent;
+  navigator.clipboard.writeText(text).then(function () {
+    btn.textContent = 'Copied';
+    btn.classList.add('done');
+    setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1800);
+  });
+}
+</script>
+<script src="/embed.js" data-focal-selector="#sample" data-focal-auto="false"></script>
+<script>
+  Focal.inject({ mount: '#sample', position: 'after', label: 'Read this in Focal' });
+</script>
+</body>
+</html>

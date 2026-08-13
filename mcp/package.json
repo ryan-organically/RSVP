@@ -1,0 +1,33 @@
+{
+  "name": "@focal/mcp",
+  "version": "1.0.0",
+  "description": "MCP server that hands long agent output to the Focal speed reader. Zero dependencies, nothing leaves your machine.",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "focal-mcp": "index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "speed-reading",
+    "rsvp",
+    "reader",
+    "claude",
+    "agent"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryan-organically/RSVP.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://focal.wiki"
+}

@@ -3,7 +3,8 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "functions": {
-    "api/proxy.js": { "maxDuration": 60 }
+    "api/proxy.js": { "maxDuration": 60 },
+    "api/read.js": { "maxDuration": 30 }
   },
   "headers": [
     {

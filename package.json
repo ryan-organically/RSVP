@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "npx serve public -p 3000",
     "build": "echo 'static site'",
-    "test": "node claude-digest/test/digests-api.test.mjs && node claude-digest/test/books-api.test.mjs && node claude-digest/test/cli-sync.test.mjs"
+    "test": "node claude-digest/test/digests-api.test.mjs && node claude-digest/test/books-api.test.mjs && node claude-digest/test/cli-sync.test.mjs && node claude-digest/test/read-api.test.mjs && node claude-digest/test/mcp.test.mjs",
+    "test:e2e": "node claude-digest/test/embed-e2e.test.mjs"
   }
 }
