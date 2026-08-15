@@ -151,3 +151,18 @@ The `claude-digest` CLI in the `claude-digest/` directory handles formatting and
 ```bash
 echo '<digest-json>' | node ./claude-digest/bin/claude-digest.js --inject --open
 ```
+
+## `dg` — the terse front (2026-08-14)
+
+Shim at `~/.npm-global/bin/dg`. Resolution order:
+
+1. `dg notes.md` — explicit file (wins over everything)
+2. `cat x | dg` — piped stdin, only when bytes actually arrive (150ms probe;
+   an open-but-silent stdin cannot hang it)
+3. bare `dg` in a directory holding exactly ONE non-hidden file — digests
+   that file (the "cd until single file" flow)
+4. bare `dg` anywhere else — mirrors the last Claude response (`--last`)
+
+`-n` skips the focal.wiki push; `DG_NO_OPEN=1` suppresses the browser (for
+scripts). Everything else passes through to claude-digest unchanged. Sync to
+focal.wiki is automatic whenever `$SYNC_TOKEN` is set.

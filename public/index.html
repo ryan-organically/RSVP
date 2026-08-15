@@ -3456,6 +3456,17 @@ async function openFromFragment() {
   const wpm = parseInt(q.get('wpm'), 10);
   if (wpm >= 50 && wpm <= 1200) setWpm(wpm);
 
+  // #...&accent=%23rrggbb — transient accent tint from the handing-over surface
+  // (e.g. an embedding app passing its own brand/bucket color). Applied to the
+  // CSS vars only, never persisted to settings, so the user's chosen accent
+  // comes back on the next normal visit.
+  const accent = (q.get('accent') || '').trim();
+  if (/^#?[0-9a-fA-F]{6}$/.test(accent)) {
+    const hex = accent.startsWith('#') ? accent : '#' + accent;
+    document.documentElement.style.setProperty('--accent', hex);
+    document.documentElement.style.setProperty('--accent-2', hex);
+  }
+
   // Scrub immediately: the text (or URL) should not sit in the address bar or history.
   history.replaceState(null, '', location.pathname + location.search);
 
