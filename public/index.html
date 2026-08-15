@@ -3526,10 +3526,21 @@ async function openFromFragment() {
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
-  if (!S.onboarded) {
+  // A handoff fragment (#t=/#p=/#u=/#post=) means an external surface is
+  // handing text over RIGHT NOW — often inside an embed iframe, where
+  // partitioned third-party storage makes every visit look like a first run.
+  // That text IS the first-run experience: never bury it under the
+  // onboarding wizard or the seeded welcome book.
+  let hasHandoff = false;
+  try {
+    const hq = new URLSearchParams(location.hash.slice(1));
+    hasHandoff = ['t', 'p', 'u', 'post'].some(k => hq.get(k) !== null);
+  } catch {}
+
+  if (!S.onboarded && !hasHandoff) {
     if (S.library.length === 0) { startOnboarding(); }
     else { S.onboarded = true; saveSettings(); }
-  } else if (S.library.length === 0 && !S.welcomeSeeded) {
+  } else if (!hasHandoff && S.library.length === 0 && !S.welcomeSeeded) {
     const w = await ensureWelcome(); if (w) renderLibrary();
   }
 
