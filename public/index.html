@@ -1028,6 +1028,26 @@ body.light .lp-noise{ opacity:.035; mix-blend-mode:multiply; }
 @media (prefers-reduced-motion:reduce){
   .lp-card:hover{transform:none}
 }
+/* ── Embed mode (#...&embed=1) ──────────────────────────────
+   The host app supplies its own chrome around the iframe; the reader shows
+   ONLY the RSVP text, the progress bar, the wpm slider, and play/pause.
+   Everything else — library/back, title row, settings, bookmark, shortcuts,
+   theme, TOC, key hints, skip cluster, word count — is gone, not just
+   hidden-but-reachable (the matching JS guards disable the key/tap/swipe
+   handlers so none of it can be triggered blind either). */
+body.embed .reader-bar,
+body.embed .toc-toggle,
+body.embed .toc-overlay,
+body.embed .toc-sidebar,
+body.embed #keyhint,
+body.embed .strip-skip,
+body.embed #skipBack10,
+body.embed #skipFwd10,
+body.embed #wordCount,
+body.embed .strip-right>button,
+body.embed #settingsPopover,
+body.embed #accentPicker{display:none !important}
+body.embed .word-area{cursor:default}
 </style>
 </head>
 <body>
@@ -3247,7 +3267,11 @@ function minimapJump(pct) {
 
 // ── Keyboard ───────────────────────────────────────────────
 function consumeCountdown() { if (S._countdown) { const f = S._countdown.then; cancelCountdown(); f && f(); return true; } return false; }
+// Embed mode: every shortcut and word-area gesture is off — the visible
+// controls (play, progress, wpm slider) are the entire interaction surface.
+const isEmbed = () => document.body.classList.contains('embed');
 document.addEventListener('keydown', e => {
+  if (isEmbed()) return;
   const overlayUp = el('appModal').classList.contains('open') || el('onboardOverlay').classList.contains('show');
   if (e.key === 'Escape') {
     if (cmdkOpen()) { closeCmdk(); return; }
@@ -3285,9 +3309,10 @@ document.addEventListener('keydown', e => {
 let _lastTouchEnd = 0, _lastTap = 0, _tsx = 0, _tsy = 0;
 (function () {
   const wa = el('wordArea');
-  wa.addEventListener('click', () => { if (Date.now() - _lastTouchEnd < 350) return; if (!consumeCountdown()) togglePlay(); });
+  wa.addEventListener('click', () => { if (isEmbed()) return; if (Date.now() - _lastTouchEnd < 350) return; if (!consumeCountdown()) togglePlay(); });
   wa.addEventListener('touchstart', e => { _tsx = e.touches[0].clientX; _tsy = e.touches[0].clientY; }, { passive: true });
   wa.addEventListener('touchend', e => {
+    if (isEmbed()) return;
     _lastTouchEnd = Date.now();
     const dx = e.changedTouches[0].clientX - _tsx, dy = e.changedTouches[0].clientY - _tsy;
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2) skip(dx > 0 ? -20 : 20);
@@ -3455,6 +3480,11 @@ async function openFromFragment() {
   if (!u && !t && !p && !posted) return false;
   const wpm = parseInt(q.get('wpm'), 10);
   if (wpm >= 50 && wpm <= 1200) setWpm(wpm);
+
+  // #...&embed=1 — minimal-chrome mode for iframe hosts (see the body.embed
+  // CSS + the isEmbed() guards on the key/tap/swipe handlers). Applied before
+  // the hash is scrubbed below.
+  if (q.get('embed') === '1') document.body.classList.add('embed');
 
   // #...&accent=%23rrggbb — transient accent tint from the handing-over surface
   // (e.g. an embedding app passing its own brand/bucket color). Applied to the
