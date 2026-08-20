@@ -1359,7 +1359,7 @@ const S = {
   wpm: 300, fontSize: 64, theme: 'dark', accent: '#e84040',
   accelMode: false, accelTarget: 600, accelStart: null, accelDuration: 30,
   chunk: 1, bionic: false, comfort: false, smartPause: false, gazePause: false, wordFont: '',
-  smartResume: true, lastBook: null, preset: '',
+  smartResume: true, lastBook: null, preset: '', tutorialHidden: false,
   sessionWordsRead: 0, sessionStartTime: null,
   digestMode: false, digestBlocks: [], digestBoundaries: null,
   paraStarts: null, chapterStarts: null, _openAccordions: new Set(), _countdown: null,
@@ -1517,7 +1517,7 @@ function saveSettings() {
     accelMode: S.accelMode, accelTarget: S.accelTarget, chunk: S.chunk,
     bionic: S.bionic, comfort: S.comfort, smartPause: S.smartPause, gazePause: S.gazePause, smartResume: S.smartResume,
     wordFont: S.wordFont, preset: S.preset, lastBook: S.lastBook,
-    onboarded: S.onboarded, welcomeSeeded: S.welcomeSeeded,
+    onboarded: S.onboarded, welcomeSeeded: S.welcomeSeeded, tutorialHidden: S.tutorialHidden,
     dailyGoal: S.dailyGoal || null,
   });
 }
@@ -1537,7 +1537,7 @@ function loadSettings() {
   if (typeof s.wordFont === 'string') S.wordFont = s.wordFont;
   if (typeof s.preset === 'string') S.preset = s.preset;
   if (typeof s.lastBook === 'string') S.lastBook = s.lastBook;
-  S.onboarded = !!s.onboarded; S.welcomeSeeded = !!s.welcomeSeeded;
+  S.onboarded = !!s.onboarded; S.welcomeSeeded = !!s.welcomeSeeded; S.tutorialHidden = !!s.tutorialHidden;
   if (s.dailyGoal && typeof s.dailyGoal === 'object') S.dailyGoal = s.dailyGoal;
 }
 
@@ -1547,6 +1547,32 @@ function setLibrary(arr) { S.library = arr; LS.set(K.lib, arr); }
 function updateLibraryEntry(id, patch) {
   const i = S.library.findIndex(b => b.id === id);
   if (i >= 0) { S.library[i] = Object.assign({}, S.library[i], patch); LS.set(K.lib, S.library); }
+}
+// The bundled welcome read is a tutorial, not a book: once it has been read
+// through (or hidden by hand) it drops out of the library list and lives behind
+// the gear menu, where it can be resurfaced any time. Deleting it works too —
+// resurfacing then re-seeds it from /welcome.txt.
+function isTutorial(b) { return b && b.source === 'welcome'; }
+function tutorialDone(b) {
+  if (S.tutorialHidden) return true;
+  const wc = b.wordCount || 0;
+  // Read through once is a one-way door: remember it, so resurfacing the
+  // tutorial later (which restarts it at the top) doesn't put it back on the shelf.
+  if (wc > 0 && loadBM(b.id) / wc >= 0.9) { S.tutorialHidden = true; saveSettings(); return true; }
+  return false;
+}
+function visibleLibrary() { return S.library.filter(b => !(isTutorial(b) && tutorialDone(b))); }
+async function openTutorial() {
+  let b = S.library.find(isTutorial);
+  if (!b) { S.welcomeSeeded = false; saveSettings(); b = await ensureWelcome(); }
+  if (!b) { showToast('Could not load the tutorial', 'err'); return; }
+  savePosNow(b.id, 0);              // resurfaced deliberately: start at the top
+  renderLibrary();
+  openBook(b.id);
+}
+function hideTutorial(id) {
+  S.tutorialHidden = true; saveSettings(); renderLibrary();
+  showToast('Tutorial tucked away — it is under the gear menu', 'ok');
 }
 // Reading position (per-book key; cheap frequent writes)
 function loadBM(id) { const v = LS.get(K.pos(id), 0); return Number.isFinite(v) ? v : 0; }
@@ -1777,12 +1803,13 @@ function timeLeft(b) {
 }
 function renderLibrary() {
   const wrap = el('bookList');
+  const shelf = visibleLibrary();
   el('tabMyBooks').querySelector('.count')?.remove();
-  if (S.library.length) {
-    const c = document.createElement('span'); c.className = 'count'; c.textContent = S.library.length;
+  if (shelf.length) {
+    const c = document.createElement('span'); c.className = 'count'; c.textContent = shelf.length;
     el('tabMyBooks').appendChild(c);
   }
-  if (S.library.length === 0) {
+  if (shelf.length === 0) {
     wrap.innerHTML = '<div class="empty"><div class="em-ico">◇</div><h3>Your library is empty</h3>' +
       '<p>Add a book to start reading. Drag a file anywhere, paste text, or pick a free classic.</p>' +
       '<div class="em-actions"><button class="btn btn-primary" id="emUpload">Upload a file</button>' +
@@ -1797,7 +1824,7 @@ function renderLibrary() {
   }
   // Continue-reading hero: most recently opened, in-progress book
   let hero = '';
-  const inProgress = S.library.filter(b => { const p = loadBM(b.id); return p > 0 && p < (b.wordCount || Infinity); })
+  const inProgress = shelf.filter(b => { const p = loadBM(b.id); return p > 0 && p < (b.wordCount || Infinity); })
     .sort((a, b) => (b.lastOpened || '').localeCompare(a.lastOpened || ''));
   if (inProgress[0]) {
     const b = inProgress[0], pos = loadBM(b.id), pct = Math.min(100, Math.round(pos / Math.max(1, b.wordCount) * 100));
@@ -1809,7 +1836,7 @@ function renderLibrary() {
       '<div class="ch-bar"><i style="width:' + pct + '%"></i></div></div>' +
       '<button class="btn btn-primary" data-open-id="' + esc(b.id) + '">Resume</button></div>';
   }
-  const rows = S.library.map(b => {
+  const rows = shelf.map(b => {
     const pos = loadBM(b.id), wc = b.wordCount || 0;
     const pct = wc > 0 && pos > 0 ? Math.min(100, Math.round(pos / wc * 100)) : 0;
     const tag = getBookTag(b);
@@ -1817,7 +1844,7 @@ function renderLibrary() {
     const meta = [b.author, fmtWords(wc) + ' words', relTime(b.addedAt)].filter(Boolean).join(' · ');
     const prog = pct > 0 ? '<div class="bk-prog"><span class="mini"><i style="width:' + pct + '%"></i></span>' + pct + '%</div>' : '';
     return '<div class="book-row" data-id="' + esc(b.id) + '" role="button" tabindex="0">' +
-      '<div class="bk-thumb">' + (b.cover ? '<img src="' + esc(b.cover) + '" alt="">' : esc(monogram(b))) + '</div>' +
+      '<div class="bk-thumb">' + (b.cover ? '<img src="' + esc(b.cover) + '" alt="" onerror="this.onerror=null;this.parentNode.textContent=' + "'" + esc(monogram(b)) + "'" + '">' : esc(monogram(b))) + '</div>' +
       '<div class="bk-main"><div class="bk-title">' + esc(b.title) + '<span class="bk-tags"><span class="pill">' + esc(tagLabel) + '</span></span></div>' +
       '<div class="bk-meta">' + esc(meta) + '</div></div>' +
       prog + '<div class="bk-time">' + esc(timeLeft(b)) + '</div>' +
@@ -1867,15 +1894,17 @@ function openMenu(anchor, items) {
 }
 function openRowMenu(anchor, id) {
   const b = S.library.find(x => x.id === id); if (!b) return;
-  openMenu(anchor, [
+  const items = [
     { label: 'Open', action: () => openBook(id) },
     { label: 'Rename', action: () => renameBook(id) },
     { label: 'Set tag…', action: () => tagBook(anchor, id) },
     { label: 'Share…', action: () => shareBook(id) },
     { label: 'Export text', action: () => exportBookText(id) },
     { sep: true },
-    { label: 'Delete', danger: true, action: () => confirmDelete(id) },
-  ]);
+  ];
+  if (isTutorial(b)) items.push({ label: 'Hide tutorial', action: () => hideTutorial(id) });
+  items.push({ label: 'Delete', danger: true, action: () => confirmDelete(id) });
+  openMenu(anchor, items);
 }
 function tagBook(anchor, id) {
   openMenu(anchor, Object.entries(BOOK_TAGS).map(([k, v]) => ({ label: v, action: () => { updateLibraryEntry(id, { tag: k }); renderLibrary(); } })));
@@ -2444,7 +2473,7 @@ function goToLibrary() {
   el('libraryView').classList.add('active');
   renderLibrary(); updateStatsChip();
   document.title = 'Focal: Speed Reader Built on RSVP';
-  try { history.replaceState(null, '', location.pathname); } catch {}
+  try { const t = LS.get(K.tab, ''); history.replaceState(null, '', location.pathname + (TABS.includes(t) && t !== 'mybooks' ? '?tab=' + t : '')); } catch {}
 }
 // ── Gutenberg ──────────────────────────────────────────────
 function proxyFetch(url) { return fetch('/api/proxy?url=' + encodeURIComponent(url)); }
@@ -2710,6 +2739,7 @@ function openLibMenu(anchor) {
     { label: 'Command palette', hint: '⌘K', action: () => openCmdk() },
     { label: 'Reading stats', hint: w ? w.toLocaleString() + ' today' : '', action: () => openStats() },
     { label: 'Toggle theme', action: () => toggleTheme() },
+    { label: 'Read the tutorial', action: () => openTutorial() },
   ]);
 }
 // Reader popover actions close the popover first, so the modal/menu they open
