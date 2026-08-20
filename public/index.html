@@ -348,7 +348,6 @@ details.paste-block[open]>summary::before{content:"–"}
 /* Digest */
 .digest-form{display:flex;gap:var(--s-2);align-items:flex-start;margin-bottom:var(--s-3)}
 .digest-form textarea{flex:1;min-height:40px;max-height:200px;font-family:var(--font-mono);font-size:var(--t-xs);background:var(--surface-2)}
-.digest-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:var(--s-5)}
 .digest-card-wrap{margin-bottom:var(--s-3)}
 .digest-card{display:block;width:100%;text-align:left;padding:var(--s-4);border:var(--bw) solid var(--border);border-radius:var(--r-lg);
   background:var(--surface);transition:border-color var(--dur-1) var(--ease)}
@@ -1212,7 +1211,6 @@ body.embed .word-area{cursor:pointer}
         <textarea id="digestPasteText" placeholder="Paste dev notes. First line becomes the title, rest become blocks. Tag lines with DONE: HIGH: CRITICAL: INFO: DECIDE:"></textarea>
         <button class="btn btn-primary" onclick="submitPastedDigest()" style="height:40px">+ Add</button>
       </div>
-      <div class="digest-legend" id="digestLegend"></div>
       <div class="digest-sync" id="digestSync" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 14px">
         <input id="syncTokenInput" type="password" autocomplete="off" placeholder="Cloud sync token — syncs digests + your books across devices"
           style="flex:1;min-width:200px;height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--border,#2a2a2a);background:var(--bg-2,#161616);color:inherit">
@@ -2860,7 +2858,7 @@ function switchTab(tab) {
     if (!el('gutenSearch').value.trim()) { el('gutenResults').innerHTML = ''; el('gutenFeatured').style.display = ''; }
   }
   if (tab === 'digest') {
-    renderDigestLegend(); renderDigestList();
+    renderDigestList();
     const tk = getSyncToken();
     if (tk) { const inp = el('syncTokenInput'); if (inp && !inp.value) inp.value = tk; pullRemoteDigests(false); }
   }
@@ -3198,9 +3196,6 @@ document.addEventListener('visibilitychange', () => {
   _lastPullAt = Date.now();
   pullRemoteDigests(false); pullRemoteBooks(false);
 });
-function renderDigestLegend() {
-  el('digestLegend').innerHTML = Object.values(TAG_COLORS).map(c => '<span class="pill ' + c.cls + '">' + c.label + '</span>').join('');
-}
 function submitPastedDigest() {
   const raw = el('digestPasteText').value.trim();
   if (!raw) { showToast('Paste some dev notes first'); return; }
@@ -3222,13 +3217,8 @@ function renderDigestList() {
   const wrap = el('digestList');
   if (!DIGEST_SESSIONS.length) { wrap.innerHTML = '<div class="empty"><div class="em-ico">⌗</div><h3>No digests yet</h3><p>Run /digest or /diff in Claude Code, or paste dev notes above to turn them into a speed-readable brief.</p></div>'; return; }
   wrap.innerHTML = DIGEST_SESSIONS.map(s => {
-    const counts = {}; s.blocks.forEach(b => counts[b.tag] = (counts[b.tag] || 0) + 1);
-    // The tally earns its place by flagging the notable tags only — a wall of
-    // "INFO ×18" says nothing, so plain info blocks fold into the word count.
     const words = s.blocks.reduce((n, b) => n + (b.text ? b.text.split(/\s+/).length : 0), 0);
-    const tally = ['<span class="pill">' + words.toLocaleString() + ' words</span>'].concat(
-      Object.entries(counts).filter(([t]) => t !== 'info' && TAG_COLORS[t])
-        .map(([t, n]) => { const c = TAG_COLORS[t]; return '<span class="pill ' + c.cls + '">' + c.label + ' ×' + n + '</span>'; })).join('');
+    const tally = '<span class="pill">' + words.toLocaleString() + ' words</span>';
     // Provenance chips: repo, Malleable bucket, associated kanban tickets.
     const m = s.meta || {};
     const chips = [];
