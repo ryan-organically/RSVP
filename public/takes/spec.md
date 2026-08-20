@@ -31,7 +31,7 @@ The file is one self-contained HTML document. Do NOT split into separate CSS fil
 
 6. **The accent picker dots use `.accent-dot.active` to mark the current accent.** Your CSS must implement an `.active` state on accent dots. The `setAccent('#hex')` function updates a CSS variable `--accent` on `:root`, so design with `var(--accent)` for primary highlights.
 
-7. **The play button changes between ▶ and ❚❚.** The JS sets `playBtn.textContent` directly. Keep `#playBtn` as a real button with no nested icon markup that the text would overwrite badly. Same for `#themeFab1`, `#themeFab2`, `#bmHeaderBtn`.
+7. **The play button changes between ▶ and ❚❚.** The JS sets `playBtn.textContent` directly. Keep `#playBtn` as a real button with no nested icon markup that the text would overwrite badly.
 
 8. **`#wordDisplay` is where the speed-reading word renders.** It receives innerHTML with an `<span class="orp">…</span>` highlight. Style `.orp` to highlight the ORP letter (color/weight). The font for the word should be readable; the original uses a serif. Choose what fits your skin but make sure it's legible at 64px default font-size.
 
@@ -52,10 +52,11 @@ Library view (`#libraryView.view`):
 - `#gutenSearch`, `#gutenResults`, `#gutenFeatured`
 - `#digestPasteText` (textarea), `#digestList`
 - `#accentPicker` containing 6 `.accent-dot` buttons (first is `.active`) plus `#accentCustom` wrapping `<input type="color" id="accentColorInput">`
-- `#themeFab1` button
+- `#libMenuBtn` — the single top-bar gear; `openLibMenu(this)` opens the anchored menu holding command palette, stats, theme and accent (2026-08-20: these were four loose glyph buttons, `#statsChip`/`#themeFab1`/the ⌘K chip/`#accentBtn`, and are no longer required)
 
 Reader view (`#readerView.view`):
-- Top bar with: back button (`onclick="goToLibrary()"`), `#currentChapter`, `#readerBookTitle`, settings toggle button (toggles `#settingsPopover.hidden`), `#bmHeaderBtn`, `#themeFab2`
+- Top bar with: back button (`onclick="goToLibrary()"`), `#currentChapter`, `#readerBookTitle`, and the settings toggle button (toggles `#settingsPopover.hidden`) as its only right-hand glyph
+- `#settingsPopover` opens with a `.set-actions` row — share, `#bmHeaderBtn`, shortcuts, `#themeFab2` — which is where those actions moved on 2026-08-20
 - `#tocToggle`, `#tocOverlay`, `#tocSidebar` containing `#tocCount`, `#tocList`, `#bookmarkList`, and an `.btn-bookmark` "+ Add bookmark here" button
 - `#wordArea` containing `#blockIndicator`, `#wordDisplay`, `#keyhint`, `#blockLabel`
 - `#controlStrip` containing `#progressBar > #progressFill`, `#wordCount`, `#skipBack10`, `#playBtn`, `#skipFwd10`, two `onclick="skip(-50|50)"` buttons, `#wpmLabel`, `#wpmSlider`

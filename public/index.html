@@ -490,6 +490,7 @@ details.paste-block[open]>summary::before{content:"–"}
 .accent-dot.active{box-shadow:0 0 0 2px var(--elevated),0 0 0 3.5px var(--text)}
 .accent-custom{width:18px;height:18px;border-radius:var(--r-full);border:var(--bw) solid var(--border-strong);overflow:hidden;position:relative;cursor:pointer}
 .accent-custom input{position:absolute;inset:-8px;width:38px;height:38px;opacity:0;cursor:pointer}
+.set-actions{display:flex;gap:6px;flex-wrap:wrap}
 .accent-swatch{width:18px;height:18px;border-radius:var(--r-full);border:var(--bw) solid var(--border-strong);background:var(--accent)}
 
 /* Loading overlay */
@@ -1067,12 +1068,9 @@ body.embed .word-area{cursor:pointer}
 <!-- ════════ LIBRARY VIEW ════════ -->
 <div id="libraryView" class="view active">
   <div class="util-row">
-    <span class="brand"><span class="dia">◆</span> Focal</span>
+    <span class="brand">Focal</span>
     <span class="util-spacer"></span>
-    <button class="chip hide-sm" id="statsChip" onclick="openStats()" aria-label="Reading stats" style="display:none"></button>
-    <button class="chip" onclick="openCmdk()" aria-label="Command palette"><span aria-hidden="true">⌘</span>K</button>
-    <button class="btn-icon" onclick="toggleTheme()" id="themeFab1" aria-label="Toggle theme">◐</button>
-    <button class="btn-icon" id="accentBtn" onclick="toggleAccentPop(event)" aria-label="Accent color"><span class="accent-swatch" aria-hidden="true"></span></button>
+    <button class="btn-icon" id="libMenuBtn" onclick="openLibMenu(this)" aria-label="Menu and settings" title="Menu">⚙</button>
     <div class="accent-pop hidden" id="accentPicker">
       <button class="accent-dot active" style="background:#22d3ee" onclick="setAccent('#22d3ee')" aria-label="Cyan" title="Cyan"></button>
       <button class="accent-dot" style="background:#e84040" onclick="setAccent('#e84040')" aria-label="Red" title="Red"></button>
@@ -1404,11 +1402,7 @@ body.embed .word-area{cursor:pointer}
     <button class="current-chapter" id="currentChapter" onclick="toggleTocSidebar()" aria-label="Table of contents"></button>
     <span class="reader-title" id="readerBookTitle"></span>
     <div class="right">
-      <button class="btn-icon" onclick="shareCurrent()" aria-label="Share this read" title="Share">⇗</button>
-      <button class="btn-icon" id="settingsToggle" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" aria-label="Reading settings">⚙</button>
-      <button class="btn-icon" id="bmHeaderBtn" onclick="addBookmark();this.textContent='✓';setTimeout(()=>this.textContent='＋',1000)" aria-label="Add bookmark">＋</button>
-      <button class="btn-icon" onclick="openShortcuts()" aria-label="Keyboard shortcuts">?</button>
-      <button class="btn-icon" onclick="toggleTheme()" id="themeFab2" aria-label="Toggle theme">◐</button>
+      <button class="btn-icon" id="settingsToggle" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" aria-label="Settings and actions">⚙</button>
     </div>
   </div>
 
@@ -1467,6 +1461,13 @@ body.embed .word-area{cursor:pointer}
       </div>
 
       <div id="settingsPopover" class="settings-pop hidden" onclick="event.stopPropagation()">
+        <div class="set-actions">
+          <button class="btn btn-outline btn-sm" onclick="settingsDo(shareCurrent)">⇗ Share</button>
+          <button class="btn btn-outline btn-sm" id="bmHeaderBtn" onclick="settingsDo(addBookmark)">🔖 Bookmark</button>
+          <button class="btn btn-outline btn-sm" onclick="settingsDo(openShortcuts)">? Shortcuts</button>
+          <button class="btn btn-outline btn-sm" id="themeFab2" onclick="toggleTheme()">◐ Theme</button>
+        </div>
+        <div class="set-sep"></div>
         <div class="set-row"><span>Font size</span><input type="range" min="28" max="120" value="64" id="fontSlider" aria-label="Font size"></div>
         <div class="set-row"><span>Words per flash</span>
           <div class="segmented" id="chunkSeg" role="group" aria-label="Words per flash">
@@ -2863,10 +2864,23 @@ function switchTab(tab) {
     if (tk) { const inp = el('syncTokenInput'); if (inp && !inp.value) inp.value = tk; pullRemoteDigests(false); }
   }
 }
+// Everything that used to sit as a loose glyph in the library top bar now lives
+// behind the one gear: palette, stats, theme, accent.
+function openLibMenu(anchor) {
+  const st = getStats(), today = st.days[todayKey()], w = today ? today.words : 0;
+  openMenu(anchor, [
+    { label: 'Command palette', hint: '⌘K', action: () => openCmdk() },
+    { label: 'Reading stats', hint: w ? w.toLocaleString() + ' today' : '', action: () => openStats() },
+    { label: 'Toggle theme', action: () => toggleTheme() },
+    { label: 'Accent color', action: () => toggleAccentPop() },
+  ]);
+}
+// Reader popover actions close the popover first, so the modal/menu they open
+// is not left sitting behind it.
+function settingsDo(fn) { el('settingsPopover').classList.add('hidden'); fn(); }
 function toggleTheme() {
   S.theme = S.theme === 'dark' ? 'light' : 'dark';
   document.body.classList.toggle('light', S.theme === 'light');
-  el('themeFab1').textContent = '◐'; el('themeFab2').textContent = '◐';
   saveSettings();
 }
 const DOT_COLORS = ['#22d3ee','#e84040','#e88400','#40b860','#4088e8','#a855f7','#e840a0'];
@@ -3488,7 +3502,7 @@ document.addEventListener('click', e => {
   const pop = el('settingsPopover');
   if (!pop.classList.contains('hidden') && !pop.contains(e.target) && !e.target.closest('#settingsToggle')) pop.classList.add('hidden');
   const acc = el('accentPicker');
-  if (!acc.classList.contains('hidden') && !acc.contains(e.target) && !e.target.closest('#accentBtn')) acc.classList.add('hidden');
+  if (!acc.classList.contains('hidden') && !acc.contains(e.target) && !e.target.closest('#libMenuBtn')) acc.classList.add('hidden');
 });
 window.addEventListener('resize', () => { cacheWordArea(); if (S.words.length && el('readerView').classList.contains('active') && !S._peek) { renderFrame(); drawMinimap(); } });
 window.addEventListener('pagehide', flushPosition);
@@ -3701,7 +3715,6 @@ async function openFromFragment() {
   document.documentElement.style.setProperty('--accent', S.accent);
   document.documentElement.style.setProperty('--word-font', WORD_FONTS[S.wordFont] || WORD_FONTS['']);
   if (S.theme === 'light') document.body.classList.add('light');
-  el('themeFab1').textContent = '◐'; el('themeFab2').textContent = '◐';
   el('wpmSlider').value = S.wpm; el('wpmLabel').textContent = S.wpm;
   el('fontSlider').value = S.fontSize; el('accelTarget').value = S.accelTarget;
   el('bionicCheck').checked = S.bionic; el('comfortCheck').checked = S.comfort; el('smartPauseCheck').checked = S.smartPause;
