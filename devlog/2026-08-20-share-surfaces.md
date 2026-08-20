@@ -67,3 +67,19 @@ and a `#d=` link lands a digest with tags surviving, unknown tags degrading to
   for articles; not built.
 - The welcome book and Gutenberg texts are public-domain; sharing anything
   else is the sharer's judgment, same as any copy-paste.
+
+## Addendum, same day: the empty-desktop sync defect
+
+Ryan reported his desktop browser showed no digests or books while his phone
+had everything. Measured before fixing: the cloud held 100 digests (current
+through the same afternoon) and 14 books — the CLI pipeline was healthy, the
+phone was healthy, and pulls were already additive. The desktop browser simply
+had no sync token in localStorage (never connected, or storage cleared): the
+token is the account, so an unconnected browser shows nothing.
+
+Two real gaps fixed on top (commit 40b0f64): boot pulled books but not digests
+(digests only pulled when the Dev Digest tab was opened), and a tab left open
+never re-pulled — it now re-pulls both, throttled to 5 minutes, when a
+connected tab becomes visible again. Pulls remain additive-only. Desktop
+reconnected via the #connect= link launched straight into the Windows default
+browser, token never printed.
