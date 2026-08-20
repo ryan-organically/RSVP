@@ -29,7 +29,7 @@ The file is one self-contained HTML document. Do NOT split into separate CSS fil
 
 5. **The `.light` body class is the light theme toggle.** Your CSS should define both dark (default) and light modes — `body.light { ... }` overrides. `toggleTheme()` toggles this class.
 
-6. **The accent picker dots use `.accent-dot.active` to mark the current accent.** Your CSS must implement an `.active` state on accent dots. The `setAccent('#hex')` function updates a CSS variable `--accent` on `:root`, so design with `var(--accent)` for primary highlights.
+6. **The accent is fixed red (`#e84040`), set on `--accent` at boot.** There is no accent picker any more (removed 2026-08-20) — design with `var(--accent)` for primary highlights and don't offer colour choice. `setAccent()` takes no argument.
 
 7. **The play button changes between ▶ and ❚❚.** The JS sets `playBtn.textContent` directly. Keep `#playBtn` as a real button with no nested icon markup that the text would overwrite badly.
 
@@ -51,7 +51,6 @@ Library view (`#libraryView.view`):
 - `#fileInput` (file input), `#pasteArea` (textarea), `#pasteBtn`, `#libFilter` (text input), `#bookList`
 - `#gutenSearch`, `#gutenResults`, `#gutenFeatured`
 - `#digestPasteText` (textarea), `#digestList`
-- `#accentPicker` containing 6 `.accent-dot` buttons (first is `.active`) plus `#accentCustom` wrapping `<input type="color" id="accentColorInput">`
 - `#libMenuBtn` — the single top-bar gear; `openLibMenu(this)` opens the anchored menu holding command palette, stats, theme and accent (2026-08-20: these were four loose glyph buttons, `#statsChip`/`#themeFab1`/the ⌘K chip/`#accentBtn`, and are no longer required)
 
 Reader view (`#readerView.view`):

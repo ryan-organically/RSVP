@@ -312,6 +312,7 @@ details.paste-block[open]>summary::before{content:"–"}
 .book-row .bk-prog .mini{width:44px;height:3px;background:var(--border);border-radius:var(--r-full);overflow:hidden}
 .book-row .bk-prog .mini i{display:block;height:100%;background:var(--accent)}
 .book-row .bk-time{font-size:var(--t-xs);color:var(--text-faint);font-variant-numeric:tabular-nums;flex-shrink:0;min-width:54px;text-align:right}
+.digest-menu-btn{opacity:.7}
 .row-menu-btn{width:28px;height:28px;border-radius:var(--r-sm);color:var(--text-faint);opacity:0;flex-shrink:0;transition:opacity var(--dur-1) var(--ease),background var(--dur-1) var(--ease)}
 .book-row:hover .row-menu-btn{opacity:.7}
 .row-menu-btn:hover{opacity:1;background:var(--surface-2);color:var(--text)}
@@ -431,7 +432,6 @@ details.paste-block[open]>summary::before{content:"–"}
 /* Red selection cues for settings controls */
 .settings-pop input[type=checkbox],.settings-pop input[type=range],.settings-pop input[type=number]{accent-color:var(--select)}
 .preset-row{display:flex;gap:6px;flex-wrap:wrap}
-.accent-row{display:flex;gap:7px;flex-wrap:wrap;padding:2px 0}
 .preset-sw{width:30px;height:30px;border-radius:var(--r-sm);border:var(--bw) solid var(--border);cursor:pointer;position:relative;overflow:hidden}
 .preset-sw:hover{border-color:var(--border-strong)}
 .preset-sw.active{box-shadow:0 0 0 2px var(--elevated),0 0 0 3.5px var(--text)}
@@ -482,16 +482,7 @@ details.paste-block[open]>summary::before{content:"–"}
   .minimap:hover .minimap-viewport{background:color-mix(in oklab,var(--accent) 30%,transparent)}
 }
 
-/* Accent picker + theme in header */
-.accent-pop{position:absolute;top:46px;right:var(--s-4);z-index:60;display:flex;align-items:center;gap:7px;padding:8px 10px;
-  background:var(--elevated);border:var(--bw) solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-2);animation:pop var(--dur-2) var(--ease-out)}
-.accent-dot{width:18px;height:18px;border-radius:var(--r-full);border:var(--bw) solid var(--border);padding:0;transition:transform var(--dur-1) var(--ease)}
-.accent-dot:hover{transform:scale(1.14)}
-.accent-dot.active{box-shadow:0 0 0 2px var(--elevated),0 0 0 3.5px var(--text)}
-.accent-custom{width:18px;height:18px;border-radius:var(--r-full);border:var(--bw) solid var(--border-strong);overflow:hidden;position:relative;cursor:pointer}
-.accent-custom input{position:absolute;inset:-8px;width:38px;height:38px;opacity:0;cursor:pointer}
 .set-actions{display:flex;gap:6px;flex-wrap:wrap}
-.accent-swatch{width:18px;height:18px;border-radius:var(--r-full);border:var(--bw) solid var(--border-strong);background:var(--accent)}
 
 /* Loading overlay */
 .loading-overlay{position:fixed;inset:0;z-index:800;background:color-mix(in oklab,var(--bg) 82%,transparent);
@@ -1048,8 +1039,7 @@ body.embed #skipBack10,
 body.embed #skipFwd10,
 body.embed #wordCount,
 body.embed .strip-right>button,
-body.embed #settingsPopover,
-body.embed #accentPicker{display:none !important}
+body.embed #settingsPopover{display:none !important}
 body.embed .word-area{cursor:pointer}
 </style>
 </head>
@@ -1071,16 +1061,6 @@ body.embed .word-area{cursor:pointer}
     <span class="brand">Focal</span>
     <span class="util-spacer"></span>
     <button class="btn-icon" id="libMenuBtn" onclick="openLibMenu(this)" aria-label="Menu and settings" title="Menu">⚙</button>
-    <div class="accent-pop hidden" id="accentPicker">
-      <button class="accent-dot active" style="background:#22d3ee" onclick="setAccent('#22d3ee')" aria-label="Cyan" title="Cyan"></button>
-      <button class="accent-dot" style="background:#e84040" onclick="setAccent('#e84040')" aria-label="Red" title="Red"></button>
-      <button class="accent-dot" style="background:#e88400" onclick="setAccent('#e88400')" aria-label="Orange" title="Orange"></button>
-      <button class="accent-dot" style="background:#40b860" onclick="setAccent('#40b860')" aria-label="Green" title="Green"></button>
-      <button class="accent-dot" style="background:#4088e8" onclick="setAccent('#4088e8')" aria-label="Blue" title="Blue"></button>
-      <button class="accent-dot" style="background:#a855f7" onclick="setAccent('#a855f7')" aria-label="Purple" title="Purple"></button>
-      <button class="accent-dot" style="background:#e840a0" onclick="setAccent('#e840a0')" aria-label="Pink" title="Pink"></button>
-      <span class="accent-custom" id="accentCustom" title="Custom color"><input type="color" value="#22d3ee" id="accentColorInput" oninput="setAccent(this.value)" aria-label="Custom accent color"></span>
-    </div>
   </div>
 
 <!-- ===== LANDING HERO (additive, self-contained) ===== -->
@@ -1490,17 +1470,6 @@ body.embed .word-area{cursor:pointer}
         <div class="set-sep"></div>
         <div class="set-row"><span>Theme preset</span></div>
         <div class="preset-row" id="presetRow"></div>
-        <div class="set-sep"></div>
-        <div class="set-row"><span>Accent color</span></div>
-        <div class="accent-row" id="settingsAccentRow" role="group" aria-label="Accent color">
-          <button class="accent-dot" style="background:#22d3ee" onclick="setAccent('#22d3ee')" aria-label="Cyan" title="Cyan"></button>
-          <button class="accent-dot" style="background:#e84040" onclick="setAccent('#e84040')" aria-label="Red" title="Red"></button>
-          <button class="accent-dot" style="background:#e88400" onclick="setAccent('#e88400')" aria-label="Orange" title="Orange"></button>
-          <button class="accent-dot" style="background:#40b860" onclick="setAccent('#40b860')" aria-label="Green" title="Green"></button>
-          <button class="accent-dot" style="background:#4088e8" onclick="setAccent('#4088e8')" aria-label="Blue" title="Blue"></button>
-          <button class="accent-dot" style="background:#a855f7" onclick="setAccent('#a855f7')" aria-label="Purple" title="Purple"></button>
-          <button class="accent-dot" style="background:#e840a0" onclick="setAccent('#e840a0')" aria-label="Pink" title="Pink"></button>
-        </div>
       </div>
     </div>
 
@@ -1529,7 +1498,7 @@ const S = {
   library: [], textCache: {}, currentBook: null,
   words: [], chapters: [], wordIndex: 0,
   playing: false, timer: null, playGen: 0,
-  wpm: 300, fontSize: 64, theme: 'dark', accent: '#22d3ee',
+  wpm: 300, fontSize: 64, theme: 'dark', accent: '#e84040',
   accelMode: false, accelTarget: 600, accelStart: null, accelDuration: 30,
   chunk: 1, bionic: false, comfort: false, smartPause: false, gazePause: false, wordFont: '',
   smartResume: true, lastBook: null, preset: '',
@@ -1557,7 +1526,7 @@ const LS = {
 };
 const K = {
   lib: 'rsvp:library', settings: 'rsvp:settings', digests: 'rsvp:digests', stats: 'rsvp:stats',
-  syncToken: 'rsvp:syncToken', syncUrl: 'rsvp:syncUrl',
+  syncToken: 'rsvp:syncToken', syncUrl: 'rsvp:syncUrl', tab: 'rsvp:tab',
   pos: id => 'rsvp:pos:' + id, bm: id => 'rsvp:bm:' + id, hl: id => 'rsvp:hl:' + id,
 };
 
@@ -1596,12 +1565,14 @@ const TAG_COLORS = {
   decision: { cls:'tag-decide', label:'DECIDE' },
 };
 const BOOK_TAGS = { book:'Book', article:'Article', paper:'Paper', notes:'Notes', digest:'Digest' };
+// The accent is red, everywhere, always — no per-user colour choice.
+const ACCENT = '#e84040';
 const PRESETS = [
-  { name:'Midnight', theme:'dark',  accent:'#22d3ee', font:'' },
-  { name:'Paper',    theme:'light', accent:'#3a6df0', font:'serif' },
-  { name:'Sepia',    theme:'light', accent:'#b06a2c', font:'serif' },
-  { name:'Forest',   theme:'dark',  accent:'#40b860', font:'' },
-  { name:'Mono',     theme:'dark',  accent:'#5aa6ec', font:'mono' },
+  { name:'Midnight', theme:'dark',  accent:ACCENT, font:'' },
+  { name:'Paper',    theme:'light', accent:ACCENT, font:'serif' },
+  { name:'Sepia',    theme:'light', accent:ACCENT, font:'serif' },
+  { name:'Forest',   theme:'dark',  accent:ACCENT, font:'' },
+  { name:'Mono',     theme:'dark',  accent:ACCENT, font:'mono' },
 ];
 const WORD_FONTS = { '':'var(--font-serif)', serif:'var(--font-serif)', sans:'var(--font-ui)', mono:'var(--font-mono)' };
 const FEATURED_BOOKS = [
@@ -1688,7 +1659,7 @@ function saveSettings() {
     accelMode: S.accelMode, accelTarget: S.accelTarget, chunk: S.chunk,
     bionic: S.bionic, comfort: S.comfort, smartPause: S.smartPause, gazePause: S.gazePause, smartResume: S.smartResume,
     wordFont: S.wordFont, preset: S.preset, lastBook: S.lastBook,
-    onboarded: S.onboarded, welcomeSeeded: S.welcomeSeeded, cyanMigrated: S.cyanMigrated,
+    onboarded: S.onboarded, welcomeSeeded: S.welcomeSeeded,
     dailyGoal: S.dailyGoal || null,
   });
 }
@@ -1701,7 +1672,6 @@ function loadSettings() {
   S.wpm = num(s.wpm, S.wpm);
   S.fontSize = num(s.fontSize, S.fontSize);
   if (s.theme === 'light' || s.theme === 'dark') S.theme = s.theme;
-  if (typeof s.accent === 'string') S.accent = s.accent;
   S.accelTarget = num(s.accelTarget, S.accelTarget);
   S.chunk = [1,2,3].includes(s.chunk) ? s.chunk : 1;
   S.bionic = !!s.bionic; S.comfort = !!s.comfort; S.smartPause = !!s.smartPause; S.gazePause = !!s.gazePause;
@@ -1709,7 +1679,7 @@ function loadSettings() {
   if (typeof s.wordFont === 'string') S.wordFont = s.wordFont;
   if (typeof s.preset === 'string') S.preset = s.preset;
   if (typeof s.lastBook === 'string') S.lastBook = s.lastBook;
-  S.onboarded = !!s.onboarded; S.welcomeSeeded = !!s.welcomeSeeded; S.cyanMigrated = !!s.cyanMigrated;
+  S.onboarded = !!s.onboarded; S.welcomeSeeded = !!s.welcomeSeeded;
   if (s.dailyGoal && typeof s.dailyGoal === 'object') S.dailyGoal = s.dailyGoal;
 }
 
@@ -2847,8 +2817,18 @@ async function importPaste() {
 }
 
 // ── Tabs / theme / accent ──────────────────────────────────
+const TABS = ['mybooks', 'free', 'digest'];
 function switchTab(tab) {
   if (el('readerView').classList.contains('active')) goToLibrary(); // leave the reader if a tab is chosen from the palette
+  // A refresh should land you back where you were reading, not on My Books.
+  // The tab lives in the URL (?tab=digest — shareable, survives a hard reload)
+  // and in localStorage (survives a plain visit to focal.wiki).
+  LS.set(K.tab, tab);
+  try {
+    const u = new URL(location.href);
+    if (tab === 'mybooks') u.searchParams.delete('tab'); else u.searchParams.set('tab', tab);
+    history.replaceState(null, '', u.pathname + u.search);
+  } catch {}
   [['mybooks','tabMyBooks','panelMyBooks'],['free','tabFree','panelFree'],['digest','tabDigest','panelDigest']].forEach(([t, tb, p]) => {
     const on = t === tab;
     el(tb).classList.toggle('active', on); el(tb).setAttribute('aria-selected', on);
@@ -2872,7 +2852,6 @@ function openLibMenu(anchor) {
     { label: 'Command palette', hint: '⌘K', action: () => openCmdk() },
     { label: 'Reading stats', hint: w ? w.toLocaleString() + ' today' : '', action: () => openStats() },
     { label: 'Toggle theme', action: () => toggleTheme() },
-    { label: 'Accent color', action: () => toggleAccentPop() },
   ]);
 }
 // Reader popover actions close the popover first, so the modal/menu they open
@@ -2883,18 +2862,12 @@ function toggleTheme() {
   document.body.classList.toggle('light', S.theme === 'light');
   saveSettings();
 }
-const DOT_COLORS = ['#22d3ee','#e84040','#e88400','#40b860','#4088e8','#a855f7','#e840a0'];
-function setAccent(color) {
-  document.documentElement.style.setProperty('--accent', color);
-  try { const n = parseInt(color.slice(1), 16); const f = v => (v = v/255) <= 0.03928 ? v/12.92 : ((v+0.055)/1.055)**2.4; const L = 0.2126*f(n>>16&255) + 0.7152*f(n>>8&255) + 0.0722*f(n&255); document.documentElement.style.setProperty('--accent-contrast', L > 0.45 ? '#04181d' : '#ffffff'); } catch {}
-  S.accent = color;
-  document.querySelectorAll('#accentPicker, #settingsAccentRow').forEach(group => {
-    group.querySelectorAll('.accent-dot').forEach((d, i) => d.classList.toggle('active', (DOT_COLORS[i] || '').toLowerCase() === color.toLowerCase()));
-  });
-  const ci = el('accentColorInput'); if (ci && /^#[0-9a-f]{6}$/i.test(color)) ci.value = color;
+function setAccent() {
+  document.documentElement.style.setProperty('--accent', ACCENT);
+  document.documentElement.style.setProperty('--accent-contrast', '#ffffff');
+  S.accent = ACCENT;
   saveSettings();
 }
-function toggleAccentPop(e) { if (e) e.stopPropagation(); el('accentPicker').classList.toggle('hidden'); }
 function applyPreset(name) {
   const p = PRESETS.find(x => x.name === name); if (!p) return;
   if (S.theme !== p.theme) toggleTheme();
@@ -3245,7 +3218,7 @@ function renderDigestList() {
     return '<div class="digest-card-wrap"><div class="digest-card">' +
       '<div class="digest-head"><span class="digest-title">' + esc(s.title) + '</span>' +
       '<span style="display:flex;gap:8px;align-items:center"><span class="digest-time">' + esc(time) + '</span>' +
-      '<button class="bm-del" data-del="' + esc(s.id) + '" aria-label="Delete digest" style="font-size:13px">✕</button></span></div>' +
+      '<button class="row-menu-btn digest-menu-btn" data-menu="' + esc(s.id) + '" aria-label="Digest options">⋮</button></span></div>' +
       '<div class="digest-preview">' + esc(s.blocks[0] ? s.blocks[0].text : '') + '</div>' +
       '<div class="digest-tally">' + chips.join('') + tally + '</div>' +
       '<div class="digest-actions"><button class="btn btn-primary btn-sm" data-read="' + esc(s.id) + '">Read digest</button>' +
@@ -3255,7 +3228,10 @@ function renderDigestList() {
   wrap.querySelectorAll('[data-read]').forEach(b => b.onclick = () => openDigest(b.dataset.read));
   wrap.querySelectorAll('[data-share]').forEach(b => b.onclick = e => { e.stopPropagation(); shareDigest(b.dataset.share); });
   wrap.querySelectorAll('[data-export]').forEach(b => b.onclick = e => { e.stopPropagation(); exportDigest(b.dataset.export); });
-  wrap.querySelectorAll('[data-del]').forEach(b => b.onclick = e => { e.stopPropagation(); deleteDigest(b.dataset.del); });
+  wrap.querySelectorAll('[data-menu]').forEach(b => b.onclick = e => { e.stopPropagation(); openDigestMenu(b, b.dataset.menu); });
+}
+function openDigestMenu(anchor, id) {
+  openMenu(anchor, [{ label: 'Delete', danger: true, action: () => deleteDigest(id) }]);
 }
 function openDigest(id) {
   const s = DIGEST_SESSIONS.find(x => x.id === id); if (!s) return;
@@ -3313,7 +3289,6 @@ function updateDigestIndicator() {
   const c = TAG_COLORS[block.tag] || TAG_COLORS.info;
   ind.className = 'block-indicator'; ind.textContent = c.label + ' · ' + (block.blockIdx + 1) + '/' + S.digestBlocks.length;
   lab.classList.remove('hidden'); lab.textContent = block.text.length > 90 ? block.text.slice(0, 90) + '…' : block.text;
-  el('wordDisplay').style.setProperty('--orp-color', 'var(--' + ({ critical:'danger', high:'warn', done:'good', info:'info', decision:'decide' }[block.tag] || 'accent') + ')');
 }
 // One self-contained HTML file: the mini player + the text, no dependencies,
 // opens offline from a file:// double-click. Shared by digest export and book
@@ -3441,7 +3416,6 @@ document.addEventListener('keydown', e => {
     if (el('appModal').classList.contains('open')) { closeModal(null); return; }
     if (el('onboardOverlay').classList.contains('show')) { obFinish(); return; }
     if (_menuEl) { closeMenu(); return; }
-    if (!el('accentPicker').classList.contains('hidden')) { el('accentPicker').classList.add('hidden'); return; }
     if (!el('settingsPopover').classList.contains('hidden')) { el('settingsPopover').classList.add('hidden'); return; }
     if (el('tocSidebar').classList.contains('open')) { toggleTocSidebar(); return; }
     if (el('readerView').classList.contains('active')) { goToLibrary(); return; }
@@ -3501,8 +3475,6 @@ el('pasteArea').addEventListener('input', e => { el('pasteBtn').style.display = 
 document.addEventListener('click', e => {
   const pop = el('settingsPopover');
   if (!pop.classList.contains('hidden') && !pop.contains(e.target) && !e.target.closest('#settingsToggle')) pop.classList.add('hidden');
-  const acc = el('accentPicker');
-  if (!acc.classList.contains('hidden') && !acc.contains(e.target) && !e.target.closest('#libMenuBtn')) acc.classList.add('hidden');
 });
 window.addEventListener('resize', () => { cacheWordArea(); if (S.words.length && el('readerView').classList.contains('active') && !S._peek) { renderFrame(); drawMinimap(); } });
 window.addEventListener('pagehide', flushPosition);
@@ -3711,8 +3683,7 @@ async function openFromFragment() {
 
 (async function init() {
   loadSettings();
-  if (!S.cyanMigrated) { if (S.accent === '#e84040') S.accent = '#22d3ee'; S.cyanMigrated = true; saveSettings(); }
-  document.documentElement.style.setProperty('--accent', S.accent);
+  document.documentElement.style.setProperty('--accent', ACCENT);
   document.documentElement.style.setProperty('--word-font', WORD_FONTS[S.wordFont] || WORD_FONTS['']);
   if (S.theme === 'light') document.body.classList.add('light');
   el('wpmSlider').value = S.wpm; el('wpmLabel').textContent = S.wpm;
@@ -3720,7 +3691,7 @@ async function openFromFragment() {
   el('bionicCheck').checked = S.bionic; el('comfortCheck').checked = S.comfort; el('smartPauseCheck').checked = S.smartPause;
   el('gazeCheck').checked = S.gazePause; // camera starts on first play, never at boot
   document.querySelectorAll('#chunkSeg button').forEach(b => b.classList.toggle('active', +b.dataset.chunk === S.chunk));
-  setAccent(S.accent); renderPresets();
+  setAccent(); renderPresets();
   TTS.init();
 
   S.library = getLibrary();
@@ -3750,6 +3721,14 @@ async function openFromFragment() {
   } else if (!hasHandoff && S.library.length === 0 && !S.welcomeSeeded) {
     const w = await ensureWelcome(); if (w) renderLibrary();
   }
+
+  // Restore the tab the last visit ended on, before any deep-link opens a book.
+  try {
+    const q = new URLSearchParams(location.search).get('tab');
+    const saved = LS.get(K.tab, '');
+    const tab = TABS.includes(q) ? q : (TABS.includes(saved) ? saved : 'mybooks');
+    if (tab !== 'mybooks') switchTab(tab);
+  } catch {}
 
   // Deep-link: ?b=<id> resumes a book directly (shareable / bookmarkable)
   try {
