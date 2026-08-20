@@ -3187,6 +3187,17 @@ async function fetchRemoteBookText(id) {
     return (d && typeof d.text === 'string') ? d.text : '';
   } catch (e) { return ''; }
 }
+// A tab left open for days goes stale: it pulled at boot and never again.
+// When a connected tab comes back into view, re-pull (throttled). Pulls are
+// additive-only — they add rows missing locally and never remove anything —
+// so this can only ever converge devices, not clobber one.
+let _lastPullAt = Date.now();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !getSyncToken()) return;
+  if (Date.now() - _lastPullAt < 5 * 60 * 1000) return;
+  _lastPullAt = Date.now();
+  pullRemoteDigests(false); pullRemoteBooks(false);
+});
 function renderDigestLegend() {
   el('digestLegend').innerHTML = Object.values(TAG_COLORS).map(c => '<span class="pill ' + c.cls + '">' + c.label + '</span>').join('');
 }
@@ -3712,7 +3723,10 @@ async function openFromFragment() {
   S.library = getLibrary();
   DIGEST_SESSIONS = getDigests();
   renderLibrary(); updateStatsChip();
-  if (getSyncToken()) { pullRemoteBooks(false); } // bring down books added on other devices
+  // Bring down everything added on other devices, not just books — digests
+  // used to pull only when the Dev Digest tab was opened, which left a
+  // connected browser looking empty at boot.
+  if (getSyncToken()) { pullRemoteDigests(false); pullRemoteBooks(false); }
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
