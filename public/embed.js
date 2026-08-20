@@ -6,7 +6,8 @@
  *
  * The text is extracted in the visitor's browser and handed to the reader through
  * the URL fragment (never transmitted to a server) or, for long texts, a direct
- * window-to-window postMessage. Nothing is uploaded, no cookies are set, no
+ * window-to-window postMessage. The reader opens in a minimal-chrome overlay on
+ * the page itself (no new tab). Nothing is uploaded, no cookies are set, no
  * network request is made until the visitor clicks. A page that embeds this does
  * not send us its readers' data, because there is no path by which it could.
  *
@@ -19,7 +20,7 @@
  *   wpm        starting words per minute
  *   auto       "false" to skip auto-injection and drive window.Focal yourself
  *
- * Public API: window.Focal.open([el]) · .extract(el) · .inject(opts)
+ * Public API: window.Focal.open([el]) · .close() · .extract(el) · .inject(opts)
  */
 (function () {
   'use strict';
@@ -38,7 +39,7 @@
   // ---- extraction --------------------------------------------------------
   var DROP = 'script,style,noscript,template,svg,canvas,iframe,form,button,select,' +
              'textarea,nav,aside,header,footer,figure figcaption,[aria-hidden="true"],' +
-             '[hidden],.focal-btn';
+             '[hidden],.focal-btn,.focal-overlay';
   var BLOCKS = 'h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,dd,dt';
 
   function autoTarget() {
@@ -105,6 +106,68 @@
     return p;
   }
 
+  // ---- overlay -----------------------------------------------------------
+  // The reader opens embedded on the page itself: a backdrop + centered panel
+  // holding an iframe of the reader in its minimal-chrome mode (&embed=1) —
+  // word display, progress, wpm slider, play; tap the word to play/pause.
+  var _overlay = null;
+
+  function closeOverlay() {
+    if (!_overlay) return;
+    document.removeEventListener('keydown', _overlay.onKey, true);
+    _overlay.root.remove();
+    _overlay = null;
+  }
+
+  function openOverlay(src, title) {
+    closeOverlay();
+    styles();
+    var root = document.createElement('div');
+    root.className = 'focal-overlay';
+    var backdrop = document.createElement('div');
+    backdrop.className = 'focal-overlay-backdrop';
+    backdrop.addEventListener('click', closeOverlay);
+    var panel = document.createElement('div');
+    panel.className = 'focal-overlay-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', 'Focal — ' + (title || 'reader'));
+    var bar = document.createElement('div');
+    bar.className = 'focal-overlay-bar';
+    var t = document.createElement('span');
+    t.className = 'focal-overlay-title';
+    t.appendChild(document.createTextNode(title || ''));   // textNode, never innerHTML
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'focal-overlay-close';
+    x.setAttribute('aria-label', 'Close Focal');
+    x.appendChild(document.createTextNode('×'));
+    x.addEventListener('click', closeOverlay);
+    bar.appendChild(t);
+    bar.appendChild(x);
+    var frame = document.createElement('iframe');
+    frame.className = 'focal-overlay-frame';
+    frame.title = 'Focal — ' + (title || 'reader');
+    frame.src = src;
+    panel.appendChild(bar);
+    panel.appendChild(frame);
+    root.appendChild(backdrop);
+    root.appendChild(panel);
+    var onKey = function (ev) {
+      if (ev.key === 'Escape') { ev.stopPropagation(); closeOverlay(); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(root);
+    _overlay = { root: root, onKey: onKey };
+    return frame;
+  }
+
+  // Escape pressed while focus is inside the reader iframe: the reader
+  // forwards it as a close ping (host keydown never fires cross-frame).
+  window.addEventListener('message', function (ev) {
+    if (ev.origin === ORIGIN && ev.data && ev.data.focal === 'close') closeOverlay();
+  });
+
   function open(el) {
     var got = extract(el);
     if (!got.text || got.text.trim().length < 10) {
@@ -113,17 +176,16 @@
     return deflate(got.text).then(function (packed) {
       var frag = packed ? b64url(packed) : null;
       if (frag && frag.length <= FRAGMENT_LIMIT) {
-        window.open(ORIGIN + '/#t=' + frag + params(got.title), '_blank', 'noopener');
+        openOverlay(ORIGIN + '/#t=' + frag + params(got.title) + '&embed=1', got.title);
         return;
       }
-      // Long text: open the reader, wait for its ready ping, then post it across.
-      var win = window.open(ORIGIN + '/#post=1' + params(got.title), '_blank');
-      if (!win) throw new Error('pop-up blocked');
+      // Long text: embed the reader, wait for its ready ping, then post it across.
+      var frame = openOverlay(ORIGIN + '/#post=1' + params(got.title) + '&embed=1', got.title);
       var sent = false;
       function onMsg(ev) {
         if (ev.origin !== ORIGIN || !ev.data || ev.data.focal !== 'ready' || sent) return;
         sent = true;
-        win.postMessage({ focal: 'text', text: got.text, title: got.title }, ORIGIN);
+        frame.contentWindow.postMessage({ focal: 'text', text: got.text, title: got.title }, ORIGIN);
         window.removeEventListener('message', onMsg);
       }
       window.addEventListener('message', onMsg);
@@ -141,7 +203,24 @@
     '.focal-btn .focal-dot{width:.5em;height:.5em;border-radius:50%;background:currentColor;' +
     'flex:none}' +
     '@media (prefers-reduced-motion:reduce){.focal-btn{transition:none}' +
-    '.focal-btn:hover{transform:none}}';
+    '.focal-btn:hover{transform:none}}' +
+    '.focal-overlay{position:fixed;inset:0;z-index:2147483000}' +
+    '.focal-overlay-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.7);' +
+    'backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}' +
+    '.focal-overlay-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);' +
+    'display:flex;flex-direction:column;width:min(1100px,94vw);height:min(760px,88vh);' +
+    'overflow:hidden;border-radius:12px;border:1px solid rgba(255,255,255,.12);' +
+    'background:#111317;box-shadow:0 40px 120px rgba(0,0,0,.8)}' +
+    '.focal-overlay-bar{display:flex;align-items:center;justify-content:space-between;' +
+    'height:44px;flex:none;padding:0 16px;border-bottom:1px solid rgba(255,255,255,.1)}' +
+    '.focal-overlay-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' +
+    'font:9.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
+    'text-transform:uppercase;letter-spacing:.2em;color:#78716c}' +
+    '.focal-overlay-close{display:flex;align-items:center;justify-content:center;' +
+    'width:32px;height:32px;border:0;border-radius:8px;background:transparent;' +
+    'color:#78716c;font-size:16px;line-height:1;cursor:pointer;font-family:inherit}' +
+    '.focal-overlay-close:hover{background:rgba(255,255,255,.05);color:#e7e5e4}' +
+    '.focal-overlay-frame{width:100%;flex:1;border:0;background:#111317}';
 
   function styles() {
     if (document.getElementById('focal-embed-css')) return;
@@ -161,8 +240,8 @@
     b.appendChild(document.createTextNode(label));   // textNode, never innerHTML
     b.addEventListener('click', function () {
       b.disabled = true;
-      open().catch(function (e) {
-        b.lastChild.nodeValue = e.message === 'pop-up blocked' ? 'Allow pop-ups to read' : 'Nothing to read here';
+      open().catch(function () {
+        b.lastChild.nodeValue = 'Nothing to read here';
       }).then(function () {
         setTimeout(function () { b.disabled = false; b.lastChild.nodeValue = label; }, 2500);
       });
@@ -184,7 +263,7 @@
     return b;
   }
 
-  window.Focal = { open: open, extract: extract, inject: inject, origin: ORIGIN, version: '1.0.0' };
+  window.Focal = { open: open, close: closeOverlay, extract: extract, inject: inject, origin: ORIGIN, version: '1.1.0' };
 
   if (cfg.focalAuto !== 'false') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { inject(); });

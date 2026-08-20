@@ -242,6 +242,9 @@ kbd,.kbd{font-family:var(--font-mono);font-size:var(--t-xs);font-weight:var(--w-
 .modal h2{font-size:var(--t-md);font-weight:var(--w-semi);letter-spacing:var(--ls-snug);margin-bottom:var(--s-2)}
 .modal p{color:var(--text-dim);font-size:var(--t-sm);line-height:var(--lh-body)}
 .modal-actions{display:flex;gap:var(--s-2);justify-content:flex-end;margin-top:var(--s-5)}
+.share-linkrow{display:flex;gap:var(--s-2);margin-top:var(--s-4)}
+.share-linkrow input{flex:1;min-width:0;font-family:var(--font-mono);font-size:var(--t-xs);color:var(--text-dim)}
+.share-actions{display:flex;gap:var(--s-2);flex-wrap:wrap;margin-top:var(--s-3)}
 
 /* ---- Range ---- */
 input[type=range]{-webkit-appearance:none;appearance:none;height:3px;width:120px;border-radius:var(--r-full);
@@ -1047,7 +1050,7 @@ body.embed #wordCount,
 body.embed .strip-right>button,
 body.embed #settingsPopover,
 body.embed #accentPicker{display:none !important}
-body.embed .word-area{cursor:default}
+body.embed .word-area{cursor:pointer}
 </style>
 </head>
 <body>
@@ -1403,6 +1406,7 @@ body.embed .word-area{cursor:default}
     <button class="current-chapter" id="currentChapter" onclick="toggleTocSidebar()" aria-label="Table of contents"></button>
     <span class="reader-title" id="readerBookTitle"></span>
     <div class="right">
+      <button class="btn-icon" onclick="shareCurrent()" aria-label="Share this read" title="Share">⇗</button>
       <button class="btn-icon" id="settingsToggle" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" aria-label="Reading settings">⚙</button>
       <button class="btn-icon" id="bmHeaderBtn" onclick="addBookmark();this.textContent='✓';setTimeout(()=>this.textContent='＋',1000)" aria-label="Add bookmark">＋</button>
       <button class="btn-icon" onclick="openShortcuts()" aria-label="Keyboard shortcuts">?</button>
@@ -2040,6 +2044,7 @@ function openRowMenu(anchor, id) {
     { label: 'Open', action: () => openBook(id) },
     { label: 'Rename', action: () => renameBook(id) },
     { label: 'Set tag…', action: () => tagBook(anchor, id) },
+    { label: 'Share…', action: () => shareBook(id) },
     { label: 'Export text', action: () => exportBookText(id) },
     { sep: true },
     { label: 'Delete', danger: true, action: () => confirmDelete(id) },
@@ -2062,6 +2067,93 @@ function downloadBlob(content, filename, type) {
   const url = URL.createObjectURL(new Blob([content], { type: type || 'text/plain' }));
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Share ──────────────────────────────────────────────────
+// Share links carry the text itself in the URL fragment — the same deflate-raw
+// + base64url encoding embed.js and @focal/mcp produce, same 180k cap.
+// Browsers never transmit a fragment to a server, so sharing uploads nothing;
+// the standalone-file path never touches the network at all.
+const SHARE_FRAGMENT_LIMIT = 180000;
+function bytesToB64url(bytes) {
+  let bin = ''; const CH = 0x8000;  // chunked: apply() blows up on big arrays
+  for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function deflateRawBytes(str) {
+  if (typeof CompressionStream !== 'function') return null;
+  try {
+    const s = new Blob([new TextEncoder().encode(str)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  } catch { return null; }
+}
+// kind 't' = plain text, 'd' = digest JSON (title/project/blocks travel inside).
+// Returns null when the text is too long for a link (or no CompressionStream).
+async function buildShareLink(kind, payload, title) {
+  const packed = await deflateRawBytes(payload);
+  if (!packed) return null;
+  const frag = bytesToB64url(packed);
+  if (frag.length > SHARE_FRAGMENT_LIMIT) return null;
+  let url = location.origin + '/#' + kind + '=' + frag;
+  if (kind === 't' && title) url += '&ti=' + encodeURIComponent(String(title).slice(0, 200));
+  return url;
+}
+async function copyToClipboard(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch { return false; }
+}
+function shareEmbedCode(link, title) {
+  return '<iframe src="' + link + '&embed=1" width="720" height="400" loading="lazy" ' +
+    'style="border:1px solid #d6d3d1;border-radius:12px" title="Focal — ' +
+    String(title || 'reader').replace(/["<>&]/g, '') + '"></iframe>';
+}
+function openShareSheet(o) { // { title, link: string|null, onDownload }
+  const linkRow = o.link
+    ? '<p>The text rides inside the link itself. Nothing is uploaded or stored on a server.</p>' +
+      '<div class="share-linkrow"><input type="text" id="shareLinkInput" readonly value="' + esc(o.link) + '" aria-label="Share link"><button class="btn btn-outline btn-sm" id="shareCopyBtn">Copy</button></div>'
+    : '<p>This one is too long to travel in a link. Download it as a standalone file instead — it opens in any browser, offline included, and nothing touches a server.</p>';
+  const m = openModalShell('<h2>Share “' + esc(o.title) + '”</h2>' + linkRow +
+    '<div class="share-actions">' +
+    (o.link && navigator.share ? '<button class="btn btn-outline btn-sm" id="shareNativeBtn">Share…</button>' : '') +
+    (o.link ? '<button class="btn btn-outline btn-sm" id="shareEmbedBtn">Copy embed code</button>' : '') +
+    '<button class="btn btn-outline btn-sm" id="shareDlBtn">⤓ Standalone HTML</button>' +
+    '</div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Done</button></div>');
+  const inp = m.querySelector('#shareLinkInput');
+  if (inp) inp.onclick = () => inp.select();
+  const copyBtn = m.querySelector('#shareCopyBtn');
+  if (copyBtn) copyBtn.onclick = async () => {
+    if (inp) inp.select();
+    if (await copyToClipboard(o.link)) showToast('Link copied', 'ok');
+    else showToast('Copy failed — the link is selected, copy it manually', 'err');
+  };
+  const nat = m.querySelector('#shareNativeBtn');
+  if (nat) nat.onclick = () => navigator.share({ title: o.title, url: o.link }).catch(() => {});
+  const emb = m.querySelector('#shareEmbedBtn');
+  if (emb) emb.onclick = async () => {
+    if (await copyToClipboard(shareEmbedCode(o.link, o.title))) showToast('Embed code copied — paste it into any page', 'ok');
+    else showToast('Copy failed', 'err');
+  };
+  m.querySelector('#shareDlBtn').onclick = () => o.onDownload();
+}
+async function shareBook(id) {
+  const b = S.library.find(x => x.id === id); if (!b) return;
+  const text = await loadText(id);
+  if (!text) { showToast('Text not available', 'err'); return; }
+  openShareSheet({ title: b.title, link: await buildShareLink('t', text, b.title), onDownload: () => exportBookHtml(id) });
+}
+async function shareDigest(id) {
+  const s = DIGEST_SESSIONS.find(x => x.id === id); if (!s) return;
+  const payload = JSON.stringify({ title: s.title, project: s.project, blocks: s.blocks });
+  openShareSheet({ title: s.title, link: await buildShareLink('d', payload), onDownload: () => exportDigest(id) });
+}
+function shareCurrent() {
+  if (!S.currentBook) return;
+  if (S.digestMode) shareDigest(S.currentBook.id); else shareBook(S.currentBook.id);
 }
 // ── Loading overlay ────────────────────────────────────────
 function showLoading(msg, progress) {
@@ -2865,6 +2957,7 @@ function buildCmdk(q) {
     { ico: S.playing ? '❚❚' : '▶', label: S.playing ? 'Pause' : 'Play', action: () => { closeCmdk(); togglePlay(); } },
     { ico:'🔖', label:'Bookmark here', action: () => { closeCmdk(); addBookmark(); } },
     { ico:'✎', label:'Highlight sentence', action: () => { closeCmdk(); addHighlight(); } },
+    { ico:'⇗', label:'Share this', action: () => { closeCmdk(); shareCurrent(); } },
     { ico:'←', label:'Back to library', action: () => { closeCmdk(); goToLibrary(); } },
   );
   groups.push({ label: 'Actions', items: actions });
@@ -3141,9 +3234,11 @@ function renderDigestList() {
       '<div class="digest-preview">' + esc(s.blocks[0] ? s.blocks[0].text : '') + '</div>' +
       '<div class="digest-tally">' + chips.join('') + tally + '</div>' +
       '<div class="digest-actions"><button class="btn btn-primary btn-sm" data-read="' + esc(s.id) + '">Read digest</button>' +
+      '<button class="btn btn-outline btn-sm" data-share="' + esc(s.id) + '">⇗ Share</button>' +
       '<button class="btn btn-outline btn-sm" data-export="' + esc(s.id) + '">⤓ Export</button></div></div></div>';
   }).join('');
   wrap.querySelectorAll('[data-read]').forEach(b => b.onclick = () => openDigest(b.dataset.read));
+  wrap.querySelectorAll('[data-share]').forEach(b => b.onclick = e => { e.stopPropagation(); shareDigest(b.dataset.share); });
   wrap.querySelectorAll('[data-export]').forEach(b => b.onclick = e => { e.stopPropagation(); exportDigest(b.dataset.export); });
   wrap.querySelectorAll('[data-del]').forEach(b => b.onclick = e => { e.stopPropagation(); deleteDigest(b.dataset.del); });
 }
@@ -3160,6 +3255,36 @@ function openDigest(id) {
   cacheWordArea(); updateDigestIndicator(); renderFrame(); updateProgress(); updatePlayBtn();
   renderTOC(); renderBookmarks(); renderHighlights(); drawMinimap();
 }
+// A digest arriving by #d= share link: same fragment rules as #t=, but the
+// payload is JSON so the tag blocks survive the trip. Treated as untrusted —
+// tags whitelisted, strings clamped, structure rebuilt field by field; all
+// downstream rendering already goes through esc()/textContent.
+function sanitizeDigestPayload(raw) {
+  const o = JSON.parse(raw);
+  const TAGS = ['critical', 'high', 'done', 'info', 'decision'];
+  const blocks = (Array.isArray(o.blocks) ? o.blocks : []).slice(0, 500).map(b => ({
+    tag: b && TAGS.includes(b.tag) ? b.tag : 'info',
+    text: b && typeof b.text === 'string' ? b.text.slice(0, 20000) : '',
+  })).filter(b => b.text.trim());
+  if (!blocks.length) throw new Error('no readable digest');
+  return {
+    title: (typeof o.title === 'string' && o.title.trim() ? o.title.trim() : 'Shared digest').slice(0, 200),
+    project: (typeof o.project === 'string' && o.project.trim() ? o.project.trim() : 'Shared').slice(0, 100),
+    blocks,
+  };
+}
+function openSharedDigest(payload) {
+  // Opening the same link twice should not stack duplicates.
+  const key = JSON.stringify(payload.blocks);
+  let s = DIGEST_SESSIONS.find(x => x.title === payload.title && JSON.stringify(x.blocks) === key);
+  if (!s) {
+    s = { id: 'd-' + (crypto.randomUUID ? crypto.randomUUID() : Date.now()), title: payload.title,
+          project: payload.project, time: new Date().toISOString(), blocks: payload.blocks };
+    DIGEST_SESSIONS.unshift(s); setDigests(DIGEST_SESSIONS); renderDigestList();
+    pushDigest(s); // mirror to focal.wiki if connected, same as a pasted digest
+  }
+  openDigest(s.id);
+}
 function getCurrentDigestBlock() {
   if (!S.digestMode || !S.digestBoundaries) return null;
   let cur = S.digestBoundaries[0];
@@ -3175,16 +3300,32 @@ function updateDigestIndicator() {
   lab.classList.remove('hidden'); lab.textContent = block.text.length > 90 ? block.text.slice(0, 90) + '…' : block.text;
   el('wordDisplay').style.setProperty('--orp-color', 'var(--' + ({ critical:'danger', high:'warn', done:'good', info:'info', decision:'decide' }[block.tag] || 'accent') + ')');
 }
-function exportDigest(id) {
-  const s = DIGEST_SESSIONS.find(x => x.id === id); if (!s) return;
-  const d = JSON.stringify(s.blocks).replace(/</g, '\\u003c').replace(/-->/g, '--\\u003e').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
-  const t = esc(s.title);
+// One self-contained HTML file: the mini player + the text, no dependencies,
+// opens offline from a file:// double-click. Shared by digest export and book
+// export; when every block is plain 'info' (a book), the digest chrome — tag
+// indicator and block-boundary pause — drops away.
+function standaloneFocalHtml(title, blocks) {
+  const d = JSON.stringify(blocks).replace(/</g, '\\u003c').replace(/-->/g, '--\\u003e').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  const t = esc(title);
   const html = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + t + ' · Focal</title>' +
 '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#111317;color:#ecedef;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}.bar{padding:12px 16px;display:flex;justify-content:space-between;border-bottom:1px solid #2a2e36;font-size:13px}.bar .t{font-weight:600;opacity:.8}.wa{flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;padding:40px}.w{font-family:Georgia,serif;font-size:64px;white-space:nowrap}.w .o{color:#22d3ee;font-weight:700}.lb{position:absolute;bottom:24px;left:16px;right:16px;text-align:center;font-size:12px;color:#7b8090;font-style:italic}.s{padding:14px;display:flex;gap:12px;align-items:center;justify-content:center;border-top:1px solid #2a2e36}.s button{background:#1e2127;border:1px solid #383d47;color:#ecedef;border-radius:6px;padding:8px 16px;cursor:pointer}.inf{font-size:11px;color:#7b8090;text-align:center;padding:6px}</style></head><body>' +
 '<div class="bar"><span class="t">' + t + '</span><span id="ti"></span></div><div class="wa" id="wa"><div class="w" id="w"></div><div class="lb" id="lb"></div></div><div class="inf" id="inf"></div>' +
 '<div class="s"><button onclick="sk(-10)">◁</button><button id="pb" onclick="tg()">▶</button><button onclick="sk(10)">▷</button><input type="range" min="50" max="1200" step="10" value="300" oninput="wpm=+this.value"></div>' +
-'<script>var blocks=' + d + ';var TL={critical:"CRITICAL",high:"HIGH",done:"DONE",info:"INFO",decision:"DECIDE"};var words=[],bd=[];blocks.forEach(function(b,i){bd.push({wi:words.length,tag:b.tag,i:i,text:b.text});(b.text.split(/\\s+/).filter(function(w){return w&&/[a-zA-Z0-9]/.test(w)})).forEach(function(w){words.push(w)})});var idx=0,playing=false,wpm=300,timer=null;function orp(w){var c=w.replace(/[^a-zA-Z0-9]/g,"").length;if(c<=1)return 0;if(c<=5)return 1;if(c<=9)return 2;if(c<=13)return 3;return 4}function rn(){var w=words[idx]||"";var o=orp(w),cc=0,b="",m="",a="";for(var i=0;i<w.length;i++){var ch=w[i],A=/[a-zA-Z0-9]/.test(ch);if(A){if(cc<o)b+=ch;else if(cc===o)m+=ch;else a+=ch;cc++}else{if(cc<=o)b+=ch;else a+=ch}}document.getElementById("w").innerHTML=b+"<span class=o>"+m+"</span>"+a;var cur=bd[0];for(var j=0;j<bd.length;j++){if(idx>=bd[j].wi)cur=bd[j];else break}document.getElementById("ti").textContent=TL[cur.tag]+" "+(cur.i+1)+"/"+blocks.length;document.getElementById("lb").textContent=cur.text.length>90?cur.text.slice(0,90)+"…":cur.text;var left=Math.ceil((words.length-idx)/(wpm/60));document.getElementById("inf").textContent=idx+" / "+words.length+" · "+(left>60?Math.ceil(left/60)+"m":left+"s")}function tk(){if(!playing||idx>=words.length-1){playing=false;document.getElementById("pb").textContent="▶";return}var w=words[idx]||"",d=60000/wpm;if(/[.!?]$/.test(w))d*=2.2;else if(/[,;:]$/.test(w))d*=1.4;var ni=idx+1;if(bd.some(function(b){return b.wi===ni}))d+=900;timer=setTimeout(function(){idx=Math.min(idx+1,words.length-1);rn();tk()},d)}function tg(){playing=!playing;document.getElementById("pb").textContent=playing?"❚❚":"▶";if(playing)tk();else clearTimeout(timer)}function sk(n){idx=Math.max(0,Math.min(idx+n,words.length-1));rn()}document.getElementById("wa").onclick=tg;document.addEventListener("keydown",function(e){if(e.code==="Space"){e.preventDefault();tg()}if(e.code==="ArrowRight")sk(10);if(e.code==="ArrowLeft")sk(-10)});rn();<\/script></body></html>';
-  downloadBlob(html, (s.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'digest') + '-rsvp.html', 'text/html');
+'<script>var blocks=' + d + ';var uni=blocks.every(function(b){return (b.tag||"info")==="info"});var TL={critical:"CRITICAL",high:"HIGH",done:"DONE",info:"INFO",decision:"DECIDE"};var words=[],bd=[];blocks.forEach(function(b,i){bd.push({wi:words.length,tag:b.tag,i:i,text:b.text});(b.text.split(/\\s+/).filter(function(w){return w&&/[a-zA-Z0-9]/.test(w)})).forEach(function(w){words.push(w)})});var idx=0,playing=false,wpm=300,timer=null;function orp(w){var c=w.replace(/[^a-zA-Z0-9]/g,"").length;if(c<=1)return 0;if(c<=5)return 1;if(c<=9)return 2;if(c<=13)return 3;return 4}function rn(){var w=words[idx]||"";var o=orp(w),cc=0,b="",m="",a="";for(var i=0;i<w.length;i++){var ch=w[i],A=/[a-zA-Z0-9]/.test(ch);if(A){if(cc<o)b+=ch;else if(cc===o)m+=ch;else a+=ch;cc++}else{if(cc<=o)b+=ch;else a+=ch}}document.getElementById("w").innerHTML=b+"<span class=o>"+m+"</span>"+a;var cur=bd[0];for(var j=0;j<bd.length;j++){if(idx>=bd[j].wi)cur=bd[j];else break}document.getElementById("ti").textContent=uni?"":TL[cur.tag]+" "+(cur.i+1)+"/"+blocks.length;document.getElementById("lb").textContent=cur.text.length>90?cur.text.slice(0,90)+"…":cur.text;var left=Math.ceil((words.length-idx)/(wpm/60));document.getElementById("inf").textContent=idx+" / "+words.length+" · "+(left>60?Math.ceil(left/60)+"m":left+"s")}function tk(){if(!playing||idx>=words.length-1){playing=false;document.getElementById("pb").textContent="▶";return}var w=words[idx]||"",d=60000/wpm;if(/[.!?]$/.test(w))d*=2.2;else if(/[,;:]$/.test(w))d*=1.4;var ni=idx+1;if(!uni&&bd.some(function(b){return b.wi===ni}))d+=900;timer=setTimeout(function(){idx=Math.min(idx+1,words.length-1);rn();tk()},d)}function tg(){playing=!playing;document.getElementById("pb").textContent=playing?"❚❚":"▶";if(playing)tk();else clearTimeout(timer)}function sk(n){idx=Math.max(0,Math.min(idx+n,words.length-1));rn()}document.getElementById("wa").onclick=tg;document.addEventListener("keydown",function(e){if(e.code==="Space"){e.preventDefault();tg()}if(e.code==="ArrowRight")sk(10);if(e.code==="ArrowLeft")sk(-10)});rn();<\/script></body></html>';
+  return html;
+}
+function exportDigest(id) {
+  const s = DIGEST_SESSIONS.find(x => x.id === id); if (!s) return;
+  downloadBlob(standaloneFocalHtml(s.title, s.blocks), (s.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'digest') + '-rsvp.html', 'text/html');
+  showToast('Exported standalone Focal file', 'ok');
+}
+async function exportBookHtml(id) {
+  const b = S.library.find(x => x.id === id); if (!b) return;
+  const text = await loadText(id);
+  if (!text) { showToast('Text not available', 'err'); return; }
+  const blocks = text.split(/\n\s*\n+/).map(p => p.trim().replace(/\s+/g, ' ')).filter(Boolean).map(p => ({ tag: 'info', text: p }));
+  if (!blocks.length) { showToast('Text not available', 'err'); return; }
+  downloadBlob(standaloneFocalHtml(b.title, blocks), ((b.title || 'book').replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'book') + '-rsvp.html', 'text/html');
   showToast('Exported standalone Focal file', 'ok');
 }
 
@@ -3267,11 +3408,18 @@ function minimapJump(pct) {
 
 // ── Keyboard ───────────────────────────────────────────────
 function consumeCountdown() { if (S._countdown) { const f = S._countdown.then; cancelCountdown(); f && f(); return true; } return false; }
-// Embed mode: every shortcut and word-area gesture is off — the visible
-// controls (play, progress, wpm slider) are the entire interaction surface.
+// Embed mode: shortcuts, swipes, and double-tap are off — their surfaces are
+// hidden — but a plain tap/click on the word area still toggles play, same as
+// the full reader. Everything else goes through the visible controls (play,
+// progress, wpm slider).
 const isEmbed = () => document.body.classList.contains('embed');
 document.addEventListener('keydown', e => {
-  if (isEmbed()) return;
+  if (isEmbed()) {
+    // Focus lives inside the iframe, so the host overlay's own Escape handler
+    // never fires — forward it and let the host close us.
+    if (e.key === 'Escape') { try { window.parent.postMessage({ focal: 'close' }, '*'); } catch {} }
+    return;
+  }
   const overlayUp = el('appModal').classList.contains('open') || el('onboardOverlay').classList.contains('show');
   if (e.key === 'Escape') {
     if (cmdkOpen()) { closeCmdk(); return; }
@@ -3309,12 +3457,15 @@ document.addEventListener('keydown', e => {
 let _lastTouchEnd = 0, _lastTap = 0, _tsx = 0, _tsy = 0;
 (function () {
   const wa = el('wordArea');
-  wa.addEventListener('click', () => { if (isEmbed()) return; if (Date.now() - _lastTouchEnd < 350) return; if (!consumeCountdown()) togglePlay(); });
+  wa.addEventListener('click', () => { if (Date.now() - _lastTouchEnd < 350) return; if (!consumeCountdown()) togglePlay(); });
   wa.addEventListener('touchstart', e => { _tsx = e.touches[0].clientX; _tsy = e.touches[0].clientY; }, { passive: true });
   wa.addEventListener('touchend', e => {
-    if (isEmbed()) return;
     _lastTouchEnd = Date.now();
     const dx = e.changedTouches[0].clientX - _tsx, dy = e.changedTouches[0].clientY - _tsy;
+    if (isEmbed()) {
+      if (Math.abs(dx) < 15 && Math.abs(dy) < 15 && !consumeCountdown()) togglePlay();
+      return;
+    }
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2) skip(dx > 0 ? -20 : 20);
     else if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 2) setWpm(S.wpm + (dy < 0 ? 50 : -50));
     else if (Math.abs(dx) < 15 && Math.abs(dy) < 15) {
@@ -3435,6 +3586,8 @@ lpDemo._init();
      #u=<encoded https url>[&ti=<title>]   fetch it through /api/read
      #t=<base64url deflate-raw utf-8>[&ti=]  the text itself, compressed
      #p=<base64url utf-8>[&ti=]            the text itself, uncompressed fallback
+     #d=<base64url deflate-raw JSON>       a shared dev digest — {title, project,
+                                           blocks:[{tag,text}]}, tags preserved
 
    These ride the URL FRAGMENT on purpose. Browsers never transmit a fragment to
    the server, so text handed over this way stays on-device exactly like a local
@@ -3454,21 +3607,23 @@ async function inflateRaw(bytes) {
   return new Response(stream).text();
 }
 // Long texts arrive by postMessage instead of the fragment (a multi-megabyte URL is
-// a bad idea). We only ever accept from window.opener, and the payload is treated as
-// untrusted text — it is rendered with textContent and stored locally, never executed
-// and never sent anywhere.
+// a bad idea). We only ever accept from the window that handed us over — window.opener
+// for a tab, window.parent for embed.js's overlay iframe — and the payload is treated
+// as untrusted text — it is rendered with textContent and stored locally, never
+// executed and never sent anywhere.
 function receivePostedText(timeoutMs = 20000) {
   return new Promise((resolve, reject) => {
+    const senders = [window.opener, window.parent !== window ? window.parent : null].filter(Boolean);
     const finish = (fn, v) => { window.removeEventListener('message', onMsg); clearTimeout(timer); fn(v); };
     const timer = setTimeout(() => finish(reject, new Error('the sending page never delivered the text')), timeoutMs);
     function onMsg(ev) {
-      if (ev.source !== window.opener) return;
+      if (!senders.includes(ev.source)) return;
       const d = ev.data;
       if (!d || d.focal !== 'text' || typeof d.text !== 'string') return;
       finish(resolve, { text: d.text, title: typeof d.title === 'string' ? d.title.slice(0, 200) : '' });
     }
     window.addEventListener('message', onMsg);
-    try { if (window.opener) window.opener.postMessage({ focal: 'ready' }, '*'); } catch {}
+    for (const s of senders) { try { s.postMessage({ focal: 'ready' }, '*'); } catch {} }
   });
 }
 
@@ -3476,14 +3631,14 @@ async function openFromFragment() {
   const hash = location.hash.slice(1);
   if (!hash) return false;
   const q = new URLSearchParams(hash);
-  const u = q.get('u'), t = q.get('t'), p = q.get('p'), posted = q.get('post') === '1';
-  if (!u && !t && !p && !posted) return false;
+  const u = q.get('u'), t = q.get('t'), p = q.get('p'), d = q.get('d'), posted = q.get('post') === '1';
+  if (!u && !t && !p && !d && !posted) return false;
   const wpm = parseInt(q.get('wpm'), 10);
   if (wpm >= 50 && wpm <= 1200) setWpm(wpm);
 
   // #...&embed=1 — minimal-chrome mode for iframe hosts (see the body.embed
-  // CSS + the isEmbed() guards on the key/tap/swipe handlers). Applied before
-  // the hash is scrubbed below.
+  // CSS + the isEmbed() guards on the key/swipe handlers; a plain tap still
+  // toggles play). Applied before the hash is scrubbed below.
   if (q.get('embed') === '1') document.body.classList.add('embed');
 
   // #...&accent=%23rrggbb — transient accent tint from the handing-over surface
@@ -3504,6 +3659,11 @@ async function openFromFragment() {
   let text = '';
   showLoading('Opening…');
   try {
+    if (d) {
+      openSharedDigest(sanitizeDigestPayload(await inflateRaw(b64urlToBytes(d))));
+      hideLoading();
+      return true;
+    }
     if (u) {
       const target = new URL(u, location.href);
       if (target.protocol !== 'https:') throw new Error('only https sources can be opened');
@@ -3564,7 +3724,7 @@ async function openFromFragment() {
   let hasHandoff = false;
   try {
     const hq = new URLSearchParams(location.hash.slice(1));
-    hasHandoff = ['t', 'p', 'u', 'post'].some(k => hq.get(k) !== null);
+    hasHandoff = ['t', 'p', 'u', 'd', 'post'].some(k => hq.get(k) !== null);
   } catch {}
 
   if (!S.onboarded && !hasHandoff) {
