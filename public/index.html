@@ -317,6 +317,9 @@ details.paste-block[open]>summary::before{content:"–"}
 .book-row:hover .row-menu-btn{opacity:.7}
 .row-menu-btn:hover{opacity:1;background:var(--surface-2);color:var(--text)}
 .book-row[data-open] .row-menu-btn{opacity:1}
+.row-share-btn{width:28px;height:28px;border-radius:var(--r-sm);color:var(--text-faint);opacity:.7;flex-shrink:0;transition:opacity var(--dur-1) var(--ease),background var(--dur-1) var(--ease),color var(--dur-1) var(--ease)}
+.row-share-btn:hover{opacity:1;background:var(--surface-2);color:var(--text)}
+@media (hover:none){.row-menu-btn{opacity:.7}}
 
 .empty{border:var(--bw) dashed var(--border-strong);border-radius:var(--r-lg);padding:var(--s-12) var(--s-6);text-align:center}
 .empty .em-ico{font-size:30px;opacity:.5;margin-bottom:var(--s-3)}
@@ -370,8 +373,11 @@ details.paste-block[open]>summary::before{content:"–"}
   border:var(--bw) solid var(--border);padding:5px 9px;border-radius:var(--r-sm);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .current-chapter:empty{display:none}
 .reader-title{flex:1;color:var(--text-dim);font-size:var(--t-sm);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.reader-bar .right{display:flex;align-items:center;gap:4px}
+.reader-bar .right{display:flex;align-items:center;gap:4px;margin-left:auto}
 .reader-bar .btn-icon{width:30px;height:30px;font-size:14px;border:var(--bw) solid transparent}
+.reader-bar .share-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:var(--bw) solid var(--border-strong);border-radius:var(--r-sm);
+  color:var(--text);font-size:var(--t-sm);margin-right:2px;transition:border-color var(--dur-1) var(--ease),background var(--dur-1) var(--ease)}
+.reader-bar .share-btn:hover{border-color:var(--accent-line);background:var(--surface-2)}
 
 .toc-toggle{display:none;position:fixed;left:10px;top:9px;z-index:120;width:32px;height:32px;border-radius:var(--r-sm);
   background:var(--surface);border:var(--bw) solid var(--border);color:var(--text);align-items:center;justify-content:center}
@@ -392,7 +398,10 @@ details.paste-block[open]>summary::before{content:"–"}
 .word-display .count{color:var(--accent);font-weight:var(--w-semi)}
 #keyhint{position:absolute;bottom:120px;left:0;right:0;text-align:center;font-size:var(--t-xs);color:var(--text-faint);
   line-height:1.9;pointer-events:none;opacity:.55;transition:opacity var(--dur-2) var(--ease)}
-#readerView.is-playing #keyhint{opacity:0}
+#readerView.is-playing #keyhint,#readerView.is-finished #keyhint{opacity:0}
+.finish-card{position:absolute;bottom:130px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:var(--s-2);
+  padding:var(--s-2) var(--s-2) var(--s-2) var(--s-4);background:var(--elevated);border:var(--bw) solid var(--border-strong);border-radius:var(--r-lg);cursor:default;white-space:nowrap}
+.finish-label{font-size:var(--t-sm);color:var(--text-dim);margin-right:var(--s-1)}
 .block-indicator{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:var(--t-xs);font-weight:var(--w-semi);
   letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-dim)}
 .block-label{position:absolute;bottom:118px;left:var(--s-6);right:var(--s-6);text-align:center;font-size:var(--t-sm);
@@ -403,19 +412,24 @@ details.paste-block[open]>summary::before{content:"–"}
 .progress-bar{height:6px;cursor:pointer;position:relative}
 .progress-bar::after{content:"";position:absolute;left:0;right:0;top:2px;height:2px;background:var(--border)}
 .progress-fill{position:absolute;left:0;top:2px;height:2px;width:100%;background:var(--accent);transform-origin:left;transform:scaleX(0);transition:transform var(--dur-1) linear;z-index:1}
-.strip-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);padding:10px var(--s-4) calc(10px + env(safe-area-inset-bottom));transition:opacity var(--dur-3) var(--ease)}
-#readerView.is-playing .control-strip:not(:hover) .strip-row{opacity:.25}
-.strip-info{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--text-dim);font-variant-numeric:tabular-nums;min-width:96px;white-space:nowrap}
-.strip-center{display:flex;align-items:center;gap:var(--s-1)}
+/* Three-column grid: the play cluster sits in the true centre no matter how wide the
+   count or the speed cluster on either side happens to be. */
+.strip-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--s-3);padding:10px var(--s-4) calc(10px + env(safe-area-inset-bottom))}
+.strip-info,.strip-right,.strip-center>.strip-btn{transition:opacity var(--dur-3) var(--ease)}
+/* While playing the strip recedes, but the pause button stays findable. */
+#readerView.is-playing .control-strip:not(:hover) :is(.strip-info,.strip-right,.strip-center>:not(.strip-play)){opacity:.25}
+#readerView.is-playing .control-strip:not(:hover) .strip-play{opacity:.6}
+.strip-info{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--text-dim);font-variant-numeric:tabular-nums;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-self:start}
+.strip-center{display:flex;align-items:center;gap:var(--s-1);justify-self:center}
 .strip-btn{width:32px;height:32px;border-radius:var(--r-sm);color:var(--text-dim);font-size:13px;display:inline-flex;align-items:center;justify-content:center;
-  border:var(--bw) solid transparent;transition:background var(--dur-1) var(--ease),color var(--dur-1) var(--ease),border-color var(--dur-1) var(--ease)}
+  border:var(--bw) solid transparent;transition:background var(--dur-1) var(--ease),color var(--dur-1) var(--ease),border-color var(--dur-1) var(--ease),opacity var(--dur-3) var(--ease)}
 .strip-btn:hover{background:var(--surface-2);color:var(--text)}
 .strip-skip{font-size:11px}
-.strip-play{width:40px;height:34px;background:var(--surface-2);border:var(--bw) solid var(--border-strong);color:var(--text);font-size:14px}
+.strip-play{width:48px;height:38px;background:var(--surface-2);border:var(--bw) solid var(--border-strong);color:var(--text);font-size:15px}
 .strip-play:hover{border-color:var(--accent-line)}
 .strip-play.playing{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast)}
-.strip-right{display:flex;align-items:center;gap:var(--s-3)}
-.strip-wpm{display:flex;align-items:center;gap:var(--s-2)}
+.strip-right{display:flex;align-items:center;gap:var(--s-3);justify-self:end;min-width:0}
+.strip-wpm{display:flex;align-items:center;gap:var(--s-2);min-width:0}
 .strip-wpm-label{font-family:var(--font-mono);font-size:var(--t-xs);color:var(--text-dim);font-variant-numeric:tabular-nums;min-width:28px}
 .strip-slider{width:110px}
 
@@ -558,9 +572,23 @@ details.paste-block[open]>summary::before{content:"–"}
   .reader-bar{padding-left:48px}
   .reader-title{display:none}
   .book-row .bk-time{display:none}
-  .strip-row{flex-wrap:wrap}
-  .strip-right{order:3;width:100%;justify-content:center;border-top:var(--bw) solid var(--border);padding-top:8px;margin-top:2px}
-  .strip-slider{width:150px}
+  .reader-bar .share-btn{padding:0 8px}
+  .reader-bar .share-btn .share-label{display:none}
+  .reader-bar .share-btn span[aria-hidden]{font-size:15px}
+  /* Row one: the transport, centred. Row two: count on the left, bookmark + speed on the right. */
+  .strip-row{grid-template-columns:auto 1fr;grid-template-areas:"center center" "info right";row-gap:var(--s-2);padding-top:8px}
+  .strip-center{grid-area:center;gap:var(--s-2)}
+  .strip-info{grid-area:info}
+  .strip-right{grid-area:right;gap:var(--s-2)}
+  .strip-btn{width:44px;height:44px;font-size:15px}
+  .strip-skip{font-size:12px}
+  .strip-play{width:76px;height:52px;font-size:20px;border-radius:var(--r-md)}
+  .strip-wpm{flex:1}
+  .strip-slider{width:auto;flex:1;min-width:64px;max-width:150px}
+  .word-area{padding-bottom:140px}
+  #keyhint{bottom:150px}
+  .block-label,#readerView.is-playing .block-label{bottom:148px}
+  .finish-card{bottom:150px}
   .util-row .hide-sm{display:none}
 }
 
@@ -1039,7 +1067,8 @@ body.embed #skipBack10,
 body.embed #skipFwd10,
 body.embed #wordCount,
 body.embed .strip-right>button,
-body.embed #settingsPopover{display:none !important}
+body.embed #settingsPopover,
+body.embed .finish-card{display:none !important}
 body.embed .word-area{cursor:pointer}
 </style>
 </head>
@@ -1240,6 +1269,7 @@ body.embed .word-area{cursor:pointer}
     <button class="current-chapter" id="currentChapter" onclick="toggleTocSidebar()" aria-label="Table of contents"></button>
     <span class="reader-title" id="readerBookTitle"></span>
     <div class="right">
+      <button class="share-btn" id="shareBtn" onclick="shareCurrent()" aria-label="Share this read"><span aria-hidden="true">⇗</span><span class="share-label">Share</span></button>
       <button class="btn-icon" id="settingsToggle" onclick="document.getElementById('settingsPopover').classList.toggle('hidden')" aria-label="Settings and actions">⚙</button>
     </div>
   </div>
@@ -1273,6 +1303,11 @@ body.embed .word-area{cursor:pointer}
           Tap to play &nbsp;·&nbsp; swipe to skip
         </div>
         <div class="block-label hidden" id="blockLabel"></div>
+        <div class="finish-card hidden" id="finishCard" onclick="event.stopPropagation()">
+          <span class="finish-label">Finished</span>
+          <button class="btn btn-primary btn-sm" onclick="shareCurrent()">⇗ Share this read</button>
+          <button class="btn btn-outline btn-sm" onclick="jumpTo(0)">↺ Read again</button>
+        </div>
       </div>
 
       <div class="control-strip" id="controlStrip" onclick="event.stopPropagation()">
@@ -1282,11 +1317,11 @@ body.embed .word-area{cursor:pointer}
         <div class="strip-row">
           <span class="strip-info" id="wordCount">0 / 0</span>
           <div class="strip-center">
-            <button class="strip-btn strip-skip" onclick="skip(-50)" aria-label="Back 50 words" title="Back 50">⏪</button>
+            <button class="strip-btn strip-skip" onclick="skip(-50)" aria-label="Back 50 words" title="Back 50">⏪︎</button>
             <button class="strip-btn" id="skipBack10" aria-label="Back 10 words" title="Back 10">◁</button>
             <button class="strip-btn strip-play" id="playBtn" aria-label="Play or pause">▶</button>
             <button class="strip-btn" id="skipFwd10" aria-label="Forward 10 words" title="Forward 10">▷</button>
-            <button class="strip-btn strip-skip" onclick="skip(50)" aria-label="Forward 50 words" title="Forward 50">⏩</button>
+            <button class="strip-btn strip-skip" onclick="skip(50)" aria-label="Forward 50 words" title="Forward 50">⏩︎</button>
           </div>
           <div class="strip-right">
             <button class="strip-btn" onclick="addBookmark()" aria-label="Add bookmark" title="Bookmark">🔖</button>
@@ -1696,6 +1731,7 @@ function wordHTML(word) {
   return bionicWrap(before) + '<span class="orp">' + esc(orp) + '</span>' + bionicWrap(after);
 }
 function renderFrame() {
+  if (S._finished) setFinished(false); // any new frame means the reader moved off the end
   if (!_wordEl) cacheWordArea();
   const el2 = _wordEl; if (!el2) return;
   el2.style.fontSize = S.fontSize + 'px';
@@ -1742,6 +1778,11 @@ function updateProgress() {
   if (info !== _lastProgress) { if (!_wordCountEl) _wordCountEl = el('wordCount'); if (_wordCountEl) _wordCountEl.textContent = info; _lastProgress = info; }
   if (S.currentBook) document.title = (len > 0 ? Math.round(pct * 100) : 0) + '% · ' + S.currentBook.title + ' · Focal';
   if (_minimapDrawn) updateMinimapViewport();
+}
+function setFinished(on) {
+  on = !!on; if (S._finished === on) return; S._finished = on;
+  const c = el('finishCard'); if (!c) return;
+  c.classList.toggle('hidden', !on); el('readerView').classList.toggle('is-finished', on);
 }
 function updatePlayBtn() {
   const b = el('playBtn');
@@ -1848,6 +1889,7 @@ function renderLibrary() {
       '<div class="bk-main"><div class="bk-title">' + esc(b.title) + '<span class="bk-tags"><span class="pill">' + esc(tagLabel) + '</span></span></div>' +
       '<div class="bk-meta">' + esc(meta) + '</div></div>' +
       prog + '<div class="bk-time">' + esc(timeLeft(b)) + '</div>' +
+      '<button class="row-share-btn" data-share-book="' + esc(b.id) + '" aria-label="Share" title="Share">⇗</button>' +
       '<button class="row-menu-btn" data-menu="' + esc(b.id) + '" aria-label="Book options">⋯</button></div>';
   }).join('');
   wrap.innerHTML = hero + '<div class="book-list">' + rows + '</div>';
@@ -1855,10 +1897,11 @@ function renderLibrary() {
   wrap.querySelectorAll('[data-open-id]').forEach(e => e.addEventListener('click', ev => { ev.stopPropagation(); openBook(e.dataset.openId); }));
   wrap.querySelectorAll('.book-row').forEach(row => {
     const open = () => openBook(row.dataset.id);
-    row.addEventListener('click', ev => { if (ev.target.closest('.row-menu-btn')) return; open(); });
+    row.addEventListener('click', ev => { if (ev.target.closest('.row-menu-btn,.row-share-btn')) return; open(); });
     row.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
   });
   wrap.querySelectorAll('.row-menu-btn').forEach(btn => btn.addEventListener('click', ev => { ev.stopPropagation(); openRowMenu(btn, btn.dataset.menu); }));
+  wrap.querySelectorAll('.row-share-btn').forEach(btn => btn.addEventListener('click', ev => { ev.stopPropagation(); shareBook(btn.dataset.shareBook); }));
   const q = el('libFilter') && el('libFilter').value; if (q && q.trim()) filterLibrary(q); // keep active filter after a rebuild
 }
 function filterLibrary(q) {
@@ -1969,26 +2012,31 @@ function shareEmbedCode(link, title) {
     String(title || 'reader').replace(/["<>&]/g, '') + '"></iframe>';
 }
 function openShareSheet(o) { // { title, link: string|null, onDownload }
+  // One primary action: the native sheet where the device has one (phones), Copy link elsewhere.
+  const native = !!(o.link && navigator.share);
+  const kb = o.link ? Math.max(1, Math.round(o.link.length / 1024)) : 0;
   const linkRow = o.link
-    ? '<p>The text rides inside the link itself. Nothing is uploaded or stored on a server.</p>' +
-      '<div class="share-linkrow"><input type="text" id="shareLinkInput" readonly value="' + esc(o.link) + '" aria-label="Share link"><button class="btn btn-outline btn-sm" id="shareCopyBtn">Copy</button></div>'
+    ? '<p>The text rides inside the link itself (' + kb + ' KB). Nothing is uploaded or stored on a server.</p>' +
+      '<div class="share-linkrow"><input type="text" id="shareLinkInput" readonly value="' + esc(o.link) + '" aria-label="Share link">' +
+      '<button class="btn ' + (native ? 'btn-outline' : 'btn-primary') + ' btn-sm" id="shareCopyBtn">Copy link</button></div>'
     : '<p>This one is too long to travel in a link. Download it as a standalone file instead — it opens in any browser, offline included, and nothing touches a server.</p>';
   const m = openModalShell('<h2>Share “' + esc(o.title) + '”</h2>' + linkRow +
     '<div class="share-actions">' +
-    (o.link && navigator.share ? '<button class="btn btn-outline btn-sm" id="shareNativeBtn">Share…</button>' : '') +
+    (native ? '<button class="btn btn-primary btn-sm" id="shareNativeBtn">Share…</button>' : '') +
     (o.link ? '<button class="btn btn-outline btn-sm" id="shareEmbedBtn">Copy embed code</button>' : '') +
-    '<button class="btn btn-outline btn-sm" id="shareDlBtn">⤓ Standalone HTML</button>' +
-    '</div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Done</button></div>');
+    '<button class="btn ' + (o.link ? 'btn-outline' : 'btn-primary') + ' btn-sm" id="shareDlBtn">⤓ Standalone HTML</button>' +
+    '</div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Close</button></div>');
   const inp = m.querySelector('#shareLinkInput');
   if (inp) inp.onclick = () => inp.select();
   const copyBtn = m.querySelector('#shareCopyBtn');
   if (copyBtn) copyBtn.onclick = async () => {
     if (inp) inp.select();
-    if (await copyToClipboard(o.link)) showToast('Link copied', 'ok');
+    if (await copyToClipboard(o.link)) { copyBtn.textContent = 'Copied'; showToast('Link copied', 'ok'); }
     else showToast('Copy failed — the link is selected, copy it manually', 'err');
   };
   const nat = m.querySelector('#shareNativeBtn');
   if (nat) nat.onclick = () => navigator.share({ title: o.title, url: o.link }).catch(() => {});
+  const primary = m.querySelector('.btn-primary'); if (primary) primary.focus();
   const emb = m.querySelector('#shareEmbedBtn');
   if (emb) emb.onclick = async () => {
     if (await copyToClipboard(shareEmbedCode(o.link, o.title))) showToast('Embed code copied — paste it into any page', 'ok');
@@ -2248,7 +2296,7 @@ function setPlaying(on) {
 function togglePlay() { setPlaying(!S.playing); }
 function scheduleTick() {
   if (!S.playing) return;
-  if (S.wordIndex >= S.words.length - 1) { setPlaying(false); return; }
+  if (S.wordIndex >= S.words.length - 1) { setPlaying(false); if (S.words.length > 1) setFinished(true); return; }
   const gen = S.playGen, chunk = S.chunk || 1;
   let wpm = S.wpm;
   if (S.accelMode && S.accelStart) { const p = Math.min((Date.now() - S.accelStart) / 1000 / S.accelDuration, 1); wpm = S.wpm + (S.accelTarget - S.wpm) * p; }
@@ -2779,8 +2827,10 @@ function openModalShell(html) {
 }
 function uiConfirm(title, msg, confirmLabel) {
   return new Promise(res => {
-    _modalResolve = res;
+    // Open the shell first: it settles any stale resolver with null, so
+    // installing ours before it would cancel this very dialog on open.
     const m = openModalShell('<h2>' + esc(title) + '</h2><p>' + esc(msg) + '</p><div class="modal-actions"><button class="btn btn-outline" id="mCancel">Cancel</button><button class="btn btn-primary" id="mOk">' + esc(confirmLabel || 'OK') + '</button></div>');
+    _modalResolve = res;
     m.querySelector('#mCancel').onclick = () => closeModal(false);
     m.querySelector('#mOk').onclick = () => closeModal(true);
     m.querySelector('#mOk').focus();
@@ -2788,8 +2838,8 @@ function uiConfirm(title, msg, confirmLabel) {
 }
 function uiPrompt(title, defVal) {
   return new Promise(res => {
-    _modalResolve = res;
     const m = openModalShell('<h2>' + esc(title) + '</h2><input type="text" id="mInput" value="' + esc(defVal || '') + '" style="margin-top:12px"><div class="modal-actions"><button class="btn btn-outline" id="mCancel">Cancel</button><button class="btn btn-primary" id="mOk">Save</button></div>');
+    _modalResolve = res;
     const inp = m.querySelector('#mInput');
     m.querySelector('#mCancel').onclick = () => closeModal(null);
     m.querySelector('#mOk').onclick = () => closeModal(inp.value);
